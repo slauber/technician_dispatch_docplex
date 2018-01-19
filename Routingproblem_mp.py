@@ -3,11 +3,10 @@
 # # Routing problem
 
 # Wichtig: Die Solver-Binary muss im PYTHONPATH liegen!
-import sys
-import docplex.mp
 
 import numpy as np
 from docplex.mp.model import Model
+from docplex.mp.solution import SolveSolution
 
 TECHNIKER = ["T1", "T2", "T3", "T4", "T5"]
 
@@ -85,31 +84,35 @@ mdl = Model(name="techicians")
 #
 # Entscheidungsvariablen
 #
-x = mdl.binary_var_cube(ANZ_TECHNIKER, ANZ_WEGPUNKTE, ANZ_WEGPUNKTE)
-start_zeit = mdl.integer_var_list(ANZ_WEGPUNKTE)
+x = mdl.binary_var_cube(ANZ_TECHNIKER, ANZ_WEGPUNKTE, ANZ_WEGPUNKTE, name="Fahrten")
+start_zeit = mdl.integer_var_list(ANZ_WEGPUNKTE, name="Startzeit")
 
-#
 # Entscheidungsausdrücke
-#
-strafkosten_auftrag_prep = []
-for i in range(ANZ_AUFTRAEGE):
-    strafkosten_auftrag_prep.append(
-        mdl.max(0, start_zeit[i] + AUFTRAGSDAUER[i] - SPAETESTER_START[i]) * STRAFE_AUFTRAG[i])
-strafkosten_auftrag = mdl.sum(strafkosten_auftrag_prep)
+strafkosten_auftrag = mdl.sum(
+    [
+        mdl.max(0, start_zeit[i] + AUFTRAGSDAUER[i] - SPAETESTER_START[i]) * STRAFE_AUFTRAG[i]
+        for i in range(ANZ_AUFTRAEGE)
+    ]
+)
+mdl.add_kpi(strafkosten_auftrag, "Strafkosten Auftrag")
 
-strafkosten_techniker_prep = []
-for i in range(ANZ_AUFTRAEGE):
-    for m in range(ANZ_TECHNIKER):
-        strafkosten_techniker_prep.append(
-            mdl.max(0, start_zeit[i] + AUFTRAGSDAUER[i], DISTANZMATRIX[i][m] - H) * STRAFE_TECHNIKER[m] * x[(m, i, m)])
-strafkosten_techniker = mdl.sum(strafkosten_techniker_prep)
+strafkosten_techniker = mdl.sum(
+    [
+        mdl.max(0, start_zeit[i] + AUFTRAGSDAUER[i], DISTANZMATRIX[i][m + ANZ_AUFTRAEGE] - H)
+        * STRAFE_TECHNIKER[m] * x[(m, i, m + ANZ_AUFTRAEGE)]
+        for i in range(ANZ_AUFTRAEGE)
+        for m in range(ANZ_TECHNIKER)
+    ]
+)
+mdl.add_kpi(strafkosten_techniker, "Strafkosten Techniker")
 
-transportkosten_prep = []
-for m in range(ANZ_TECHNIKER):
-    for i in range(ANZ_WEGPUNKTE):
-        for j in range(ANZ_WEGPUNKTE):
-            transportkosten_prep.append(x[(m, i, j)] * DISTANZMATRIX[i][j] * KRAFTSTOFF_KOSTEN)
-transportkosten = mdl.sum(transportkosten_prep)
+transportkosten = mdl.sum(
+    x[(m, i, j)] * DISTANZMATRIX[i][j] * KRAFTSTOFF_KOSTEN
+    for m in range(ANZ_TECHNIKER)
+    for i in range(ANZ_WEGPUNKTE)
+    for j in range(ANZ_WEGPUNKTE)
+)
+mdl.add_kpi(transportkosten, "Transportkosten")
 
 #
 # Zielfunktion
@@ -123,11 +126,115 @@ mdl.minimize(kosten)
 #
 # Ein Auftrag muss vor H-Max enden & Techniker muss spätestens bis H_max zuhause sein
 mdl.add_constraints(
-    [FRUESTER_START[i] + AUFTRAGSDAUER[i] <= start_zeit[i] + AUFTRAGSDAUER[i] <= H_max for i in range(ANZ_AUFTRAEGE)])
-# todo mdl.add_constraints([FRUESTER_START[i] + AUFTRAGSDAUER[i] <= start_zeit[i] + AUFTRAGSDAUER[i] <= H_max for i in range(ANZ_AUFTRAEGE)] for m in range(ANZ_TECHNIKER))
+    [FRUESTER_START[i] + AUFTRAGSDAUER[i] <= start_zeit[i] + AUFTRAGSDAUER[i] for i in range(ANZ_AUFTRAEGE)]
+)
 
+mdl.add_constraints(
+    [start_zeit[i] + AUFTRAGSDAUER[i] <= H_max for i in range(ANZ_AUFTRAEGE)]
+)
+
+mdl.add_equivalence_constraints(
+    [
+        mdl.add_equivalence(x[(m, i, m)],
+                            start_zeit[i] + AUFTRAGSDAUER[i] + DISTANZMATRIX[i][m] <= H_max)
+        for i in range(ANZ_AUFTRAEGE) for m in range(ANZ_TECHNIKER)
+    ]
+)
+
+mdl.add_constraints(
+    [
+        x[(m, m + ANZ_AUFTRAEGE, i)] == 0
+        for m in range(ANZ_TECHNIKER)
+        for i in range(ANZ_TECHNIKER)
+        if m != i
+    ]
+)
+mdl.add_constraints(
+    [
+        x[(m, j, i + ANZ_AUFTRAEGE)] == 0
+        for m in range(ANZ_TECHNIKER)
+        for i in range(ANZ_TECHNIKER)
+        for j in range(ANZ_AUFTRAEGE) if m != i
+    ]
+)
+mdl.add_constraints(
+    [
+        x[(m, i + ANZ_AUFTRAEGE, j)] == 0
+        for m in range(ANZ_TECHNIKER)
+        for i in range(ANZ_TECHNIKER)
+        for j in range(ANZ_AUFTRAEGE) if m != i
+    ]
+)
+
+# ctOnlyHome_1: sum(t in Auftrag) x[m][m][t] <= 1; /* Techniker darf maximal nur einmal starten, und das nur vom eigenen Standort*/
+for m in range(ANZ_TECHNIKER):
+    _temp = []
+    for j in range(ANZ_AUFTRAEGE):
+        _temp.append(x[(m, m + ANZ_AUFTRAEGE, j)])
+    mdl.add_constraint(mdl.sum(_temp) <= 1)
+
+# onlyhome2
+for m in range(ANZ_TECHNIKER):
+    _temp = []
+    for j in range(ANZ_AUFTRAEGE):
+        _temp.append(x[(m, j, m + ANZ_AUFTRAEGE)])
+    mdl.add_constraint(mdl.sum(_temp) <= 1)
+
+# forall(m, i in Techniker, j in Auftrag: m != i){
+# ctOnlyHome_3: x[m][m][j] == 1 => sum (t in Auftrag) x[m][t][m] == 1
+
+# sum (t in Auftrag) x[m][m][t] == sum (t in Auftrag) x[m][t][m]
+for m in range(ANZ_TECHNIKER):
+    _temp1 = []
+    _temp2 = []
+    for j in range(ANZ_AUFTRAEGE):
+        _temp1.append(x[(m, j, m + ANZ_AUFTRAEGE)])
+        _temp2.append(x[(m, m + ANZ_AUFTRAEGE, j)])
+    mdl.add_constraint(mdl.sum(_temp1) == mdl.sum(_temp2))
+
+# oh5
+mdl.add_constraints(
+    [
+        x[(m, i + ANZ_AUFTRAEGE, t + ANZ_AUFTRAEGE)] == 0
+        for m in range(ANZ_TECHNIKER)
+        for i in range(ANZ_TECHNIKER)
+        if (m != i)
+        for t in range(ANZ_TECHNIKER)
+        if (t != m)
+    ]
+)
+
+# oh6
+mdl.add_constraints(
+    [
+        x[(m, i + ANZ_AUFTRAEGE, t)] == 0
+        for m in range(ANZ_TECHNIKER)
+        for i in range(ANZ_TECHNIKER)
+        if (m != i)
+        for t in range(ANZ_AUFTRAEGE)
+    ]
+)
+
+# oh7
+# for k in r#ange(ANZ_WEGPUNKTE):
+#    mdl.add_constraint(
+#
+#    )
+mdl.add_constraints(
+    [
+        mdl.sum([x[(m, j, k)] for k in range(ANZ_WEGPUNKTE)]) <= 1
+        for m in range(ANZ_TECHNIKER)
+        for j in range(ANZ_AUFTRAEGE)
+    ]
+)
+
+mdl.print_information()
 
 #
 # Lösungsauftrag
 #
 mdl.solve()
+mdl.report()
+
+solution: SolveSolution = mdl.solution
+print(solution)
