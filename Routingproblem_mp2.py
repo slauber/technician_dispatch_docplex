@@ -96,7 +96,7 @@ mdl.add_constraints(
         for i in range(ANZ_WEGPUNKTE)
         for t in range(ANZ_TECHNIKER)
         if (t != m)
-    ]
+    ],
 )
 
 # Fährt nicht von anderem Depot zu einem Wegpunkt
@@ -141,16 +141,19 @@ mdl.add_constraints(
 )
 
 # Endet die Route im eigenen Depot
-# mdl.add_constraints(
-#    x[(m, i, j)] <= mdl.sum(
-#        x[(m, t, m + ANZ_AUFTRAEGE)]
-#        for t in range(ANZ_AUFTRAEGE)
-#    )
-#    for m in range(ANZ_TECHNIKER)
-#    for i in range(ANZ_WEGPUNKTE)
-#    for j in range(ANZ_AUFTRAEGE)
-# )
-#
+mdl.add_constraints(
+    x[(m, i, j)] <= mdl.sum(
+        x[(m, t, m + ANZ_AUFTRAEGE)]
+        for t in range(ANZ_AUFTRAEGE)
+        if t != i
+    )
+    for m in range(ANZ_TECHNIKER)
+    for i in range(ANZ_WEGPUNKTE)
+    for j in range(ANZ_AUFTRAEGE)
+    if i != j
+    if (i < ANZ_AUFTRAEGE) or (i == m + ANZ_AUFTRAEGE)
+)
+
 
 # Fährt maximal einmal von einem Wegpunkt zu einem anderen Wegpunkt
 mdl.add_constraints(
@@ -166,8 +169,7 @@ mdl.add_constraints(
 # Wenn er von einem Auftrag wegfährt, dann muss er dort auch hingefahren sein
 mdl.add_constraints(
     [
-        x[(m, j, l)] <= mdl.sum(
-            [
+        x[(m, j, l)] <= mdl.sum([
                 x[(m, t, j)]
                 for t in range(ANZ_WEGPUNKTE)
                 if j != t
@@ -181,18 +183,18 @@ mdl.add_constraints(
     ]
 )
 
-# Wenn er einen Auftrag besucht, dann muss er von dort auch wieder wegfahren
-mdl.add_constraints(
-    x[(m, l, j)] <= mdl.sum(
-        x[(m, j, i)]
-        for i in range(ANZ_WEGPUNKTE)
-        if i != j
-    )
-    for m in range(ANZ_TECHNIKER)
-    for l in range(ANZ_WEGPUNKTE)
-    for j in range(ANZ_AUFTRAEGE)
-    if l != j
-)
+# # Wenn er einen Auftrag besucht, dann muss er von dort auch wieder wegfahren
+# mdl.add_constraints(
+#     x[(m, l, j)] <= mdl.sum(
+#         x[(m, j, i)]
+#         for i in range(ANZ_WEGPUNKTE)
+#         if i != j
+#     )
+#     for m in range(ANZ_TECHNIKER)
+#     for l in range(ANZ_WEGPUNKTE)
+#     for j in range(ANZ_AUFTRAEGE)
+#     if l != j
+# )
 
 # Jeder Auftrag muss besucht worden sein
 mdl.add_constraints(
@@ -231,9 +233,11 @@ mdl.add_constraints(
     for j in range(ANZ_WEGPUNKTE)
     for s in range(ANZ_SKILLS)
 )
-print(mdl.has_objective())
+
+print(mdl.export_as_lp_string())
 mdl.solve()
 mdl.report()
+print(mdl.get_solve_details())
 
 solution: SolveSolution = mdl.solution
 print(solution)
