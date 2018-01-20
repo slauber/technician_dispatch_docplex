@@ -11,7 +11,7 @@ from docplex.mp.solution import SolveSolution
 # Definition der Skillsets der Techniker
 TECHNIKER_HAT_SKILL = np.array(
     [[1, 1],
-     [0, 1]]
+     [1, 1]]
 )
 
 # Dauer der Übergänge von a nach b
@@ -27,8 +27,8 @@ print(DISTANZMATRIX)
 
 AUFTRAG_BRAUCHT_SKILL = np.array(
     [[1, 1],
-     [1, 0],
-     [0, 1]]
+     [1, 1],
+     [1, 1]]
 )
 
 AUFTRAGSDAUER = np.array([45, 10, 10])
@@ -51,6 +51,7 @@ GEWICHT_TRANSPORT_KOSTEN = 1
 ANZ_TECHNIKER = len(TECHNIKER_HAT_SKILL)
 ANZ_AUFTRAEGE = len(AUFTRAG_BRAUCHT_SKILL)
 ANZ_WEGPUNKTE = len(DISTANZMATRIX)
+ANZ_SKILLS = len(TECHNIKER_HAT_SKILL[0])
 
 # sanity checks
 print('ANZ_TECHNIKER:', ANZ_TECHNIKER)
@@ -245,6 +246,14 @@ mdl.add_constraints(
 #    for j in range(ANZ_WEGPUNKTE)
 #    if i != j and i != m
 # )
+
+mdl.add_constraints(
+    AUFTRAG_BRAUCHT_SKILL[i][s] - (1 - x[(m, i, j)]) <= TECHNIKER_HAT_SKILL[m][s]
+    for m in range(ANZ_TECHNIKER)
+    for i in range(ANZ_AUFTRAEGE)
+    for j in range(ANZ_WEGPUNKTE)
+    for s in range(ANZ_SKILLS)
+)
 
 # Entscheidungsausdrücke
 strafkosten_auftrag = mdl.sum(
