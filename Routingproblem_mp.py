@@ -18,7 +18,7 @@ TECHNIKER_HAT_SKILL = np.array(
 DISTANZMATRIX = np.array(
     [[0, 30, 70, 20, 15],
      [30, 0, 45, 30, 25],
-     [70, 45, 50, 50, 45],
+     [70, 45, 0, 50, 45],
      [20, 30, 50, 0, 30],
      [15, 25, 45, 30, 0]]
 )
@@ -235,16 +235,16 @@ mdl.add_constraints(
     for m in range(ANZ_TECHNIKER)
 )
 
-mdl.add_equivalence_constraints(
-    mdl.add_equivalence(
-        x[(m, i, j)],
-        start_zeit[j] >= (start_zeit[i] + AUFTRAGSDAUER[i] + DISTANZMATRIX[i][j])
-    )
-    for m in range(ANZ_TECHNIKER)
-    for i in range(ANZ_AUFTRAEGE)
-    for j in range(ANZ_WEGPUNKTE)
-    if i != j and i != m
-)
+# mdl.add_equivalence_constraints(
+#    mdl.add_equivalence(#
+#        x[(m, i, j)],
+#        start_zeit[j] >= (start_zeit[i] + AUFTRAGSDAUER[i] + DISTANZMATRIX[i][j])
+#    )
+#    for m in range(ANZ_TECHNIKER)
+#    for i in range(ANZ_AUFTRAEGE)
+#    for j in range(ANZ_WEGPUNKTE)
+#    if i != j and i != m
+# )
 
 # Entscheidungsausdrücke
 strafkosten_auftrag = mdl.sum(
