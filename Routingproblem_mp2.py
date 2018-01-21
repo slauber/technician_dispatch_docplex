@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 import numpy as np
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
@@ -35,7 +37,7 @@ class RoutingProblem:
                       tageslaenge: int, max_tageslaenge: int, seed: int):
         anz_wegpunkte = anz_techniker + anz_auftraege
         np.random.seed(seed)
-        distanzmatrix = np.random.randint(0, 75, size=(anz_wegpunkte, anz_wegpunkte))
+        distanzmatrix = np.random.randint(0, 60, size=(anz_wegpunkte, anz_wegpunkte))
         distanzmatrix = (distanzmatrix + distanzmatrix.T)
         np.fill_diagonal(distanzmatrix, 0)
 
@@ -49,13 +51,13 @@ class RoutingProblem:
         for i in range(anz_techniker):
             self.AUFTRAGSDAUER[anz_auftraege + i] = 0
 
-        self.FRUESTER_START = np.random.randint(0, 10, size=anz_auftraege)
+        self.FRUESTER_START = np.random.randint(0, 120, size=anz_auftraege)
 
         self.SPAETESTES_ENDE = np.zeros(anz_auftraege)
         for i in range(anz_auftraege):
-            self.SPAETESTES_ENDE[i] = self.FRUESTER_START[i] + self.AUFTRAGSDAUER[i] + np.random.randint(60, 180)
+            self.SPAETESTES_ENDE[i] = self.FRUESTER_START[i] + self.AUFTRAGSDAUER[i] + np.random.randint(30, 120)
 
-        self.STRAFE_AUFTRAG = np.random.randint(50, 500, size=anz_auftraege)
+        self.STRAFE_AUFTRAG = np.random.randint(25, 300, size=anz_auftraege)
         self.STRAFE_TECHNIKER = np.random.randint(5, 20, size=anz_techniker)
 
         self.ANZ_AUFTRAEGE = anz_auftraege
@@ -93,7 +95,7 @@ class RoutingProblem:
         r_techniker = range(self.ANZ_TECHNIKER)
         r_skills = range(self.ANZ_SKILLS)
 
-        x = mdl.binary_var_cube(self.ANZ_TECHNIKER, self.ANZ_WEGPUNKTE, self.ANZ_WEGPUNKTE, name="Fahrten")
+        x = mdl.binary_var_cube(self.ANZ_TECHNIKER, self.ANZ_WEGPUNKTE, self.ANZ_WEGPUNKTE, name="Fahrt")
         start_zeit = mdl.integer_var_list(self.ANZ_WEGPUNKTE, name="Startzeit")
 
         # Entscheidungsausdrücke
@@ -122,12 +124,6 @@ class RoutingProblem:
         mdl.minimize(
             strafkosten_auftrag * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER
         )
-
-        # mdl.minimize(mdl.sum(
-        #    start_zeit[i]
-        #    for i in r_auftraege
-        # ))
-
 
         print("\n", mdl.get_objective_expr())
         print(mdl.get_objective_sense(), "\n")
@@ -289,6 +285,7 @@ class RoutingProblem:
         self.mdl = mdl
 
     def solve_model(self, timeout: int = 10):
+        self.mdl.set_time_limit(timeout)
         self.mdl.solve()
         self.mdl.report()
         print(self.mdl.get_solve_details())
@@ -296,12 +293,54 @@ class RoutingProblem:
         solution: SolveSolution = self.mdl.solution
         print(solution)
 
+        solution_dict = solution.as_dict()
+        fahrten_pro_techniker: Dict[int, List] = {}
+        for m in range(self.ANZ_TECHNIKER):
+            for i in range(self.ANZ_WEGPUNKTE):
+                for j in range(self.ANZ_WEGPUNKTE):
+                    if 'Fahrt_{}_{}_{}'.format(m, i, j) in solution_dict:
+                        if m in fahrten_pro_techniker:
+                            fahrten_pro_techniker[m].append((i, j))
+                        else:
+                            fahrten_pro_techniker[m] = [(i, j)]
+
+        fahrten_pro_techniker_sortiert = {}
+
+        for techniker, fahrten in fahrten_pro_techniker.items():
+            current_node = techniker + self.ANZ_AUFTRAEGE
+            fahrten_pro_techniker_sortiert[techniker] = [current_node]
+            while True:
+                next_node = None
+                i = 0
+                while (next_node is None):
+                    if fahrten[i][0] == current_node:
+                        next_node = fahrten[i][1]
+                    else:
+                        i = i + 1
+
+                fahrten_pro_techniker_sortiert[techniker].append(next_node)
+                current_node = next_node
+                if (current_node == techniker + self.ANZ_AUFTRAEGE):
+                    break
+
+        print(fahrten_pro_techniker_sortiert)
+        for techniker, fahrten in fahrten_pro_techniker_sortiert.items():
+            str = "Techniker {} fährt von seinem Depot ".format(techniker)
+            for fahrt in fahrten:
+                if fahrt <= self.ANZ_AUFTRAEGE:
+                    str = str + "zu Auftrag {} (Startzeit: {}) ".format(fahrt,
+                                                                        solution_dict["Startzeit_{}".format(fahrt)])
+            str = str + "und zurück zu seinem Depot."
+
+            print(str)
+
+
 
 if __name__ == '__main__':
     problem = RoutingProblem()
 
     problem.generate_data(anz_techniker=3, anz_auftraege=5, anz_skills=2, tageslaenge=500, max_tageslaenge=600,
-                          seed=10)
+                          seed=15)
     problem.print_input()
 
     problem.create_model()
