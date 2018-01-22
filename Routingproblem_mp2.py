@@ -4,7 +4,6 @@ import numpy as np
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
 
-
 class RoutingProblem:
     DISTANZMATRIX: np.array
     TECHNIKER_HAT_SKILL: np.array
@@ -31,12 +30,21 @@ class RoutingProblem:
     ANZ_WEGPUNKTE: int
     ANZ_SKILLS: int
 
-    mdl: Model
+    SEED: int
+
+    mdl: Model = None
+    solution: SolveSolution = None
+
+    alle_auftraege_erledigt = False
+    fahrten_pro_techniker_sortiert = {}
+    unerledigte_auftraege = []
+
 
     def generate_data(self, anz_techniker: int, anz_auftraege: int, anz_skills: int,
                       tageslaenge: int, max_tageslaenge: int, seed: int):
         anz_wegpunkte = anz_techniker + anz_auftraege
         np.random.seed(seed)
+        self.SEED = seed
         distanzmatrix = np.random.randint(0, 60, size=(anz_wegpunkte, anz_wegpunkte))
         distanzmatrix = (distanzmatrix + distanzmatrix.T)
         np.fill_diagonal(distanzmatrix, 0)
@@ -75,9 +83,6 @@ class RoutingProblem:
             print("Warning - Generated data was inconsistent - Regenerating using seed ", seed + 1)
             self.generate_data(anz_techniker, anz_auftraege, anz_skills, tageslaenge, max_tageslaenge, seed + 1)
 
-    def set_data(self):
-        pass
-
     def print_input(self):
         print('Distanzmatrix\n', self.DISTANZMATRIX)
         print('Frühster Start\n', self.FRUESTER_START)
@@ -105,6 +110,12 @@ class RoutingProblem:
         )
         mdl.add_kpi(strafkosten_auftrag, "Strafkosten Auftrag")
         #
+        strafkosten_nicht_gestarteter_auftrag = mdl.sum(
+            mdl.max((1 - start_zeit[i]) * 10000, 0) * self.STRAFE_AUFTRAG[i]
+            for i in r_auftraege
+        )
+        mdl.add_kpi(strafkosten_nicht_gestarteter_auftrag, "Strafkosten nicht gestarteter Auftrag")
+        #
         strafkosten_techniker = mdl.sum(
             mdl.max(0, start_zeit[i] + self.AUFTRAGSDAUER[i], self.DISTANZMATRIX[i][m + self.ANZ_AUFTRAEGE] - self.H)
             * self.STRAFE_TECHNIKER[m] * x[(m, i, m + self.ANZ_AUFTRAEGE)]
@@ -122,17 +133,21 @@ class RoutingProblem:
         mdl.add_kpi(transportkosten, "Transportkosten")
 
         mdl.minimize(
-            strafkosten_auftrag * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER
+            strafkosten_auftrag * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER +
+            self.GEWICHT_TRANSPORT_KOSTEN + 100 * strafkosten_nicht_gestarteter_auftrag
         )
-
-        print("\n", mdl.get_objective_expr())
-        print(mdl.get_objective_sense(), "\n")
 
         # Startzeit eines Auftrags muss nach frühestem Startpunkt liegen
-        mdl.add_constraints(
-            self.FRUESTER_START[i] <= start_zeit[i]
-            for i in r_auftraege
-        )
+
+        for i in r_auftraege:
+            mdl.add_if_then(
+                mdl.sum(
+                    x[(m, j, i)]
+                    for m in r_techniker
+                    for j in r_wegpunkte
+                ) >= 1,
+                self.FRUESTER_START[i] <= start_zeit[i]
+            )
 
         # Startzeit und Auftragsdauer müssen vor H_max enden
         mdl.add_constraints(
@@ -235,17 +250,19 @@ class RoutingProblem:
             if l != j
         )
 
-        # Jeder Auftrag muss genaz einmal besucht worden sein
-        mdl.add_constraints(
-            mdl.sum(
-                [
-                    x[(m, j, i)]
-                    for m in r_techniker
-                    for j in r_wegpunkte
-                ]
-            ) == 1
-            for i in r_auftraege
-        )
+        # Jeder Auftrag mit positiver Startzeit muss angefahren worden sein
+        for i in r_auftraege:
+            mdl.add_if_then(
+                start_zeit[i] >= 1,
+                mdl.sum(
+                    [
+                        x[(m, j, i)]
+                        for m in r_techniker
+                        for j in r_wegpunkte
+                    ]
+                ) == 1
+            )
+
 
         # Ein Auftrag besucht sich nicht selbst
         mdl.add_constraints(
@@ -284,64 +301,118 @@ class RoutingProblem:
         #print(mdl.export_as_lp_string())
         self.mdl = mdl
 
-    def solve_model(self, timeout: int = 10):
+    def solve_model(self, timeout: int = 120):
         self.mdl.set_time_limit(timeout)
         self.mdl.solve()
-        self.mdl.report()
-        print(self.mdl.get_solve_details())
+        self.solution = self.mdl.solution
 
-        solution: SolveSolution = self.mdl.solution
-        print(solution)
+    def print_solution(self, print_stats=False, print_details=False):
+        if print_stats:
+            print(self.mdl.get_solve_details())
+        if self.solution:
+            if print_details:
+                print(self.solution)
+            solution_dict = self.solution.as_dict()
+            fahrten_pro_techniker: Dict[int, List] = {}
+            for m in range(self.ANZ_TECHNIKER):
+                for i in range(self.ANZ_WEGPUNKTE):
+                    for j in range(self.ANZ_WEGPUNKTE):
+                        if 'Fahrt_{}_{}_{}'.format(m, i, j) in solution_dict:
+                            if m in fahrten_pro_techniker:
+                                fahrten_pro_techniker[m].append((i, j))
+                            else:
+                                fahrten_pro_techniker[m] = [(i, j)]
 
-        solution_dict = solution.as_dict()
-        fahrten_pro_techniker: Dict[int, List] = {}
-        for m in range(self.ANZ_TECHNIKER):
-            for i in range(self.ANZ_WEGPUNKTE):
-                for j in range(self.ANZ_WEGPUNKTE):
-                    if 'Fahrt_{}_{}_{}'.format(m, i, j) in solution_dict:
-                        if m in fahrten_pro_techniker:
-                            fahrten_pro_techniker[m].append((i, j))
+            self.fahrten_pro_techniker_sortiert = {}
+            for techniker, fahrten in fahrten_pro_techniker.items():
+                current_node = techniker + self.ANZ_AUFTRAEGE
+                self.fahrten_pro_techniker_sortiert[techniker] = [current_node]
+                while True:
+                    next_node = None
+                    i = 0
+                    while (next_node is None):
+                        if fahrten[i][0] == current_node:
+                            next_node = fahrten[i][1]
                         else:
-                            fahrten_pro_techniker[m] = [(i, j)]
+                            i = i + 1
 
-        fahrten_pro_techniker_sortiert = {}
+                    self.fahrten_pro_techniker_sortiert[techniker].append(next_node)
+                    current_node = next_node
+                    if (current_node == techniker + self.ANZ_AUFTRAEGE):
+                        break
 
-        for techniker, fahrten in fahrten_pro_techniker.items():
-            current_node = techniker + self.ANZ_AUFTRAEGE
-            fahrten_pro_techniker_sortiert[techniker] = [current_node]
-            while True:
-                next_node = None
-                i = 0
-                while (next_node is None):
-                    if fahrten[i][0] == current_node:
-                        next_node = fahrten[i][1]
-                    else:
-                        i = i + 1
+            for techniker, fahrten in self.fahrten_pro_techniker_sortiert.items():
+                str = "Techniker {} fährt von seinem Depot ".format(techniker)
+                for fahrt in fahrten:
+                    if fahrt != self.ANZ_AUFTRAEGE + techniker:
+                        str = str + "zu Auftrag {} (Startzeit: {}) ".format(fahrt,
+                                                                            solution_dict["Startzeit_{}".format(fahrt)])
+                str = str + "und zurück zu seinem Depot."
 
-                fahrten_pro_techniker_sortiert[techniker].append(next_node)
-                current_node = next_node
-                if (current_node == techniker + self.ANZ_AUFTRAEGE):
-                    break
+                print(str)
 
-        print(fahrten_pro_techniker_sortiert)
-        for techniker, fahrten in fahrten_pro_techniker_sortiert.items():
-            str = "Techniker {} fährt von seinem Depot ".format(techniker)
-            for fahrt in fahrten:
-                if fahrt <= self.ANZ_AUFTRAEGE:
-                    str = str + "zu Auftrag {} (Startzeit: {}) ".format(fahrt,
-                                                                        solution_dict["Startzeit_{}".format(fahrt)])
-            str = str + "und zurück zu seinem Depot."
+            self.alle_auftraege_erledigt = set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]).issubset(
+                set(solution_dict.keys()))
+            restauftraege = [item for item in set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]) if
+                             item not in set(solution_dict.keys())]
 
-            print(str)
+            self.unerledigte_auftraege = []
+            for auftrag in restauftraege:
+                self.unerledigte_auftraege.append(int(auftrag[10:]))
 
+            if self.alle_auftraege_erledigt:
+                print("Es wurden alle Aufträge in der Periode erledigt")
+            else:
+                print("Es konnten nicht alle Aufträge in der Periode erledigt werden.")
+                print(self.unerledigte_auftraege)
+        else:
+            print("Es gibt keine Lösung")
+
+    def print_graph(self):
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        G = nx.from_numpy_matrix(self.DISTANZMATRIX)
+        plt.subplot(121)
+        nx.draw(G, with_labels=True, font_weight='bold')
+        plt.show()
+
+    def get_json(self):
+        import json
+        return json.dumps(
+            {
+                "inputs": {
+                    "distanzmatrix": self.DISTANZMATRIX.tolist(),
+                    "fruester_start": self.FRUESTER_START.tolist(),
+                    "auftragsdauer": self.AUFTRAGSDAUER.tolist(),
+                    "spaetestes_ende": self.SPAETESTES_ENDE.tolist(),
+                    "techniker_skills": self.TECHNIKER_HAT_SKILL.tolist(),
+                    "auftrag_skills": self.AUFTRAG_BRAUCHT_SKILL.tolist(),
+                    "strafe_auftrag": self.STRAFE_AUFTRAG.tolist(),
+                    "strafe_techniker": self.STRAFE_TECHNIKER.tolist(),
+                    "seed": self.SEED
+                },
+                "outputs": {
+                    "alle_auftraege_erledigt": self.alle_auftraege_erledigt,
+                    "fahrten_pro_techniker_sortiert": self.fahrten_pro_techniker_sortiert,
+                    "unerledigte_auftraege": sorted(self.unerledigte_auftraege)
+                }
+            }
+        )
+
+    def __str__(self):
+        return "Routingproblem"
 
 
 if __name__ == '__main__':
     problem = RoutingProblem()
 
-    problem.generate_data(anz_techniker=3, anz_auftraege=5, anz_skills=2, tageslaenge=500, max_tageslaenge=600,
-                          seed=15)
+    problem.generate_data(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=500, max_tageslaenge=500,
+                          seed=1234)
     problem.print_input()
+
+    # problem.print_graph()
 
     problem.create_model()
     problem.solve_model()
+    problem.print_solution(print_details=True, print_stats=True)
+    print(problem.get_json())

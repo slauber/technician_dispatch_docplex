@@ -1,0 +1,344 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Ein Websolver für das Technician Dispatch Problem">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <title>Technician Dispatch Problem</title>
+
+    <!-- Add to homescreen for Chrome on Android
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <!-- Tile icon for Win8 (144x144 + tile color)
+    <meta name="msapplication-TileImage" content="images/touch/ms-touch-icon-144x144-precomposed.png">
+    <meta name="msapplication-TileColor" content="#3372DF">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.teal-red.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #view-source {
+            position: fixed;
+            display: block;
+            right: 0;
+            bottom: 0;
+            margin-right: 40px;
+            margin-bottom: 40px;
+            z-index: 900;
+        }
+    </style>
+</head>
+<body>
+<div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+    <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+            <span class="mdl-layout-title">Technician Dispatch Problem</span>
+            <div class="mdl-layout-spacer"></div>
+        </div>
+    </header>
+    <div class="demo-ribbon"></div>
+    <div id="demo-toast-example" class="mdl-js-snackbar mdl-snackbar">
+        <div class="mdl-snackbar__text"></div>
+        <button class="mdl-snackbar__action" type="button"></button>
+    </div>
+    <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+            <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+            <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+                <div class="demo-crumbs mdl-color-text--grey-500">
+                    Technician Dispatch Problem > Model Generator and Solver
+                </div>
+                <h3>Modellgenerator und -solver</h3>
+                <form action="#">
+                    <div class="mdl-grid">
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="techniker" name="techniker" value="2">
+                                <label class="mdl-textfield__label" for="techniker">Anzahl Techniker</label>
+                                <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="auftraege" name="auftraege" value="4">
+                                <label class="mdl-textfield__label" for="auftraege">Anzahl Aufträge</label>
+                                <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mdl-grid">
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="skills" name="skills" value="2">
+                                <label class="mdl-textfield__label" for="skills">Skillsetgröße</label>
+                                <span class="mdl-textfield__error">Größe muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="seed" name="seed" value="1234">
+                                <label class="mdl-textfield__label" for="seed">Zufallsseed</label>
+                                <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mdl-grid">
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="tageslaenge" name="tageslaenge" value="500">
+                                <label class="mdl-textfield__label" for="tageslaenge">Tageslänge (Arbeitszeit) in
+                                    min</label>
+                                <span class="mdl-textfield__error">Länge muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="max_tageslaenge" name="max_tageslaenge" value="600">
+                                <label class="mdl-textfield__label" for="max_tageslaenge">Maximale Arbeitzeit in
+                                    min</label>
+                                <span class="mdl-textfield__error">Länge muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+                        onclick="processInput()" id="btnSolve">
+                    Modell generieren und lösen
+                </button>
+                <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+                        onclick="cancel()" id="btnCancel" disabled>
+                    Abbrechen
+                </button>
+                <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+                        onclick="clearSolutions()" id="btnClear" disabled>
+                    Lösungen leeren
+                </button>
+                <div class="mdl-grid">
+                    <div class="mdl-cell">
+                        <div id="progress_indicator" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"
+                             style="display: none"></div>
+                    </div>
+                </div>
+                <!--<p>
+                    Cillum dolor esse sit incididunt velit eiusmod magna ad nostrud officia aute dolor dolor. Magna esse
+                    ullamco pariatur adipisicing consectetur eu commodo officia. Ex cillum consequat mollit minim elit
+                    est deserunt occaecat nisi amet. Quis aliqua nostrud Lorem occaecat sunt. Eiusmod quis amet ullamco
+                    aliquip dolore ut incididunt duis adipisicing. Elit consequat nisi eiusmod aute ipsum sunt veniam do
+                    est. Occaecat mollit aliquip ut proident consectetur amet ex dolore consectetur aliqua elit.
+                </p>-->
+                <div class="solution-container">
+
+                </div>
+            </div>
+        </div>
+        <footer class="demo-footer mdl-mini-footer">
+            <div class="mdl-mini-footer--left-section">
+                <ul class="mdl-mini-footer--link-list">
+                    <li><a href="#">Eine Arbeit von Sebastian Lauber und Yusuf Günes</a></li>
+                </ul>
+            </div>
+        </footer>
+    </main>
+</div>
+<script src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+<script type="application/javascript">
+    var xhttp = new XMLHttpRequest();
+
+    function processInput() {
+        var progress_indicator = document.querySelector('#progress_indicator');
+        progress_indicator.style.display = "block";
+        var cancel_button = document.querySelector('#btnCancel');
+        cancel_button.disabled = false;
+        var solve_button = document.querySelector('#btnSolve');
+        solve_button.disabled = true;
+        var inputs = document.getElementsByTagName("INPUT");
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].type === 'text') {
+                inputs[i].disabled = true;
+            }
+        }
+
+        var techniker = document.querySelector('#techniker').value;
+        var auftraege = document.querySelector('#auftraege').value;
+        var skills = document.querySelector('#skills').value;
+        var seed = document.querySelector('#seed').value;
+        var tageslaenge = document.querySelector('#tageslaenge').value;
+        var max_tageslaenge = document.querySelector('#max_tageslaenge').value;
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                enableFields();
+                var response = JSON.parse(this.responseText);
+                console.log(response);
+                appendSolution(response);
+                var clear_button = document.querySelector('#btnClear');
+                clear_button.disabled = false;
+                showToast("Lösung gefunden.");
+            } else {
+                if (this.status == 500) {
+                    showToast("Ein Fehler bei der Verarbeitung der Daten ist aufgetreten.");
+                    cancel();
+                }
+            }
+        };
+        xhttp.open("GET",
+            "http://localhost:5000/solve?techniker=" + techniker + "&auftraege=" + auftraege +
+            "&skills=" + skills + "&tageslaenge=" + tageslaenge + "&max_tageslaenge=" + max_tageslaenge +
+            "&seed=" + seed,
+            true);
+        xhttp.send();
+
+    }
+
+    function enableFields() {
+        var progress_indicator = document.querySelector('#progress_indicator');
+        progress_indicator.style.display = "none";
+        var cancel_button = document.querySelector('#btnCancel');
+        cancel_button.disabled = true;
+        var solve_button = document.querySelector('#btnSolve');
+        solve_button.disabled = false;
+        var inputs = document.getElementsByTagName("INPUT");
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].type === 'text') {
+                inputs[i].disabled = false;
+            }
+        }
+    }
+
+    function cancel() {
+        xhttp.abort();
+        enableFields()
+    }
+
+    function isArray(what) {
+        return Object.prototype.toString.call(what) === '[object Array]';
+    }
+
+    /* Funktioniert mit 2D Matrizen und Listen */
+    function createTable(data) {
+        var table_html = "<table><tr>";
+        is2d = isArray(data[0]);
+
+        for (var i_uber = -1; i_uber < (is2d ? data[0].length : data.length); i_uber++) {
+            if (i_uber >= 0) {
+                table_html += "<th>" + i_uber + "</th>";
+            }
+            else {
+                table_html += "<th>&nbsp;</th>";
+            }
+        }
+        table_html += "</tr>";
+
+        for (var i_matrix = 0; i_matrix < (is2d ? data.length : 1); i_matrix++) {
+            table_html += "<tr>";
+            for (var j_matrix = 0; j_matrix < (is2d ? data[0].length : data.length); j_matrix++) {
+                if (j_matrix === 0) {
+                    table_html += "<th>" + (is2d ? i_matrix : "&nbsp;") + "</th>";
+                }
+                table_html += "<td>" + (is2d ? data[i_matrix][j_matrix] : data[j_matrix]) + "</td>";
+            }
+            table_html += "</tr>";
+        }
+        table_html += "</table>";
+        return table_html;
+    }
+
+    function appendSolution(result) {
+        var solutions = document.querySelector('.solution-container');
+        var solution = document.createElement("div");
+
+        var html = "<h3>Ergebnis</h3>";
+        html += "<span>" + (result.outputs.alle_auftraege_erledigt ?
+            "Es konnten alle Aufträge erledigt werden ✅." : "Es konnten nicht alle Aufträge erledigt werden ❌.") + "</span>";
+
+        if (!result.outputs.alle_auftraege_erledigt) {
+            html += "<h4>Unerledigte Aufträge</h4><span>" + result.outputs.unerledigte_auftraege + "</span>"
+        }
+
+        html += "<h4>" + (Object.keys(result.outputs.fahrten_pro_techniker_sortiert).length > 1 ? "Routen" : "Route") + "</h4>";
+
+        html += "<ul class=\"demo-list-item mdl-list\">";
+        for (var key in result.outputs.fahrten_pro_techniker_sortiert) {
+            if (result.outputs.fahrten_pro_techniker_sortiert.hasOwnProperty(key)) {
+                html += "<li class=\"mdl-list__item\"><span class=\"mdl-list__item-primary-content\">"
+                html += "<i class=\"material-icons mdl-list__item-icon\">person</i>";
+                html += "Techniker " + key + " fährt von seinem Depot ";
+                for (var wegpunkt_i = 1; wegpunkt_i < result.outputs.fahrten_pro_techniker_sortiert[key].length - 1; wegpunkt_i++) {
+                    html += "zu Auftrag " + result.outputs.fahrten_pro_techniker_sortiert[key][wegpunkt_i] + ", danach "
+                }
+                html += "wieder in sein Depot.</span></li>"
+            }
+        }
+        html += "</ul>";
+
+        html += "<h5>Distanzmatrix</h5>" + createTable(result.inputs.distanzmatrix);
+        html += "<h5>Techniker Skills</h5>" + createTable(result.inputs.techniker_skills);
+        html += "<h5>Auftrag Skills</h5>" + createTable(result.inputs.auftrag_skills);
+        html += "<h5>Frühster Start</h5>" + createTable(result.inputs.fruester_start);
+        html += "<h5>Auftragsdauer</h5>" + createTable(result.inputs.auftragsdauer);
+        html += "<h5>Spätestes Ende</h5>" + createTable(result.inputs.spaetestes_ende);
+        html += "<h5>Strafkosten Auftrag</h5>" + createTable(result.inputs.strafe_auftrag);
+        html += "<h5>Strafkosten Techniker</h5>" + createTable(result.inputs.strafe_techniker);
+        html += "<h6>Seed</h6><span>" + result.inputs.seed + "</span>";
+        solution.innerHTML = html + "<hr>";
+        solutions.appendChild(solution);
+
+        console.log(result);
+    }
+
+    function clearSolutions() {
+        var solutions = document.querySelector('.solution-container');
+        solutions.innerHTML = "";
+        var clear_button = document.querySelector('#btnClear');
+        clear_button.disabled = true;
+    }
+
+    function showToast(text) {
+        'use strict';
+        var snackbarContainer = document.querySelector('#demo-toast-example');
+        var data = {message: text};
+        snackbarContainer.MaterialSnackbar.showSnackbar(data);
+    }
+
+
+</script>
+</body>
+</html>
