@@ -134,11 +134,10 @@ class RoutingProblem:
 
         mdl.minimize(
             strafkosten_auftrag * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER +
-            self.GEWICHT_TRANSPORT_KOSTEN + 100 * strafkosten_nicht_gestarteter_auftrag
+            self.GEWICHT_TRANSPORT_KOSTEN + 1000 * strafkosten_nicht_gestarteter_auftrag
         )
 
         # Startzeit eines Auftrags muss nach frühestem Startpunkt liegen
-
         for i in r_auftraege:
             mdl.add_if_then(
                 mdl.sum(
@@ -155,14 +154,14 @@ class RoutingProblem:
             for i in r_auftraege
         )
 
-        [
-            mdl.add_if_then(
-                x[(m, i, m + self.ANZ_AUFTRAEGE)] == 1,
-                start_zeit[i] + self.AUFTRAGSDAUER[i] + self.DISTANZMATRIX[i][
-                    m + self.ANZ_AUFTRAEGE] <= self.H_max
-            )
-            for i in r_auftraege for m in r_techniker
-        ]
+        for i in r_auftraege:
+            for m in r_techniker:
+                mdl.add_if_then(
+                    x[(m, i, m + self.ANZ_AUFTRAEGE)] == 1,
+                    start_zeit[i] + self.AUFTRAGSDAUER[i] + self.DISTANZMATRIX[i][
+                        m + self.ANZ_AUFTRAEGE] <= self.H_max
+                )
+
 
         # Fährt nicht von anderem Wegpunkt zu fremden Depot
         mdl.add_constraints(
@@ -298,7 +297,6 @@ class RoutingProblem:
             for s in r_skills
         )
 
-        #print(mdl.export_as_lp_string())
         self.mdl = mdl
 
     def solve_model(self, timeout: int = 120):
@@ -378,25 +376,30 @@ class RoutingProblem:
 
     def get_json(self):
         import json
-        return json.dumps(
-            {
-                "inputs": {
-                    "distanzmatrix": self.DISTANZMATRIX.tolist(),
-                    "fruester_start": self.FRUESTER_START.tolist(),
-                    "auftragsdauer": self.AUFTRAGSDAUER.tolist(),
-                    "spaetestes_ende": self.SPAETESTES_ENDE.tolist(),
-                    "techniker_skills": self.TECHNIKER_HAT_SKILL.tolist(),
-                    "auftrag_skills": self.AUFTRAG_BRAUCHT_SKILL.tolist(),
-                    "strafe_auftrag": self.STRAFE_AUFTRAG.tolist(),
-                    "strafe_techniker": self.STRAFE_TECHNIKER.tolist(),
-                    "seed": self.SEED
-                },
-                "outputs": {
-                    "alle_auftraege_erledigt": self.alle_auftraege_erledigt,
-                    "fahrten_pro_techniker_sortiert": self.fahrten_pro_techniker_sortiert,
-                    "unerledigte_auftraege": sorted(self.unerledigte_auftraege)
-                }
+        json_data = {
+            "inputs": {
+                "distanzmatrix": self.DISTANZMATRIX.tolist(),
+                "fruester_start": self.FRUESTER_START.tolist(),
+                "auftragsdauer": self.AUFTRAGSDAUER.tolist(),
+                "spaetestes_ende": self.SPAETESTES_ENDE.tolist(),
+                "techniker_skills": self.TECHNIKER_HAT_SKILL.tolist(),
+                "auftrag_skills": self.AUFTRAG_BRAUCHT_SKILL.tolist(),
+                "strafe_auftrag": self.STRAFE_AUFTRAG.tolist(),
+                "strafe_techniker": self.STRAFE_TECHNIKER.tolist(),
+                "seed": self.SEED
             }
+        }
+
+        if self.solution:
+            json_data["outputs"] = {
+                "alle_auftraege_erledigt": self.alle_auftraege_erledigt,
+                "fahrten_pro_techniker_sortiert": self.fahrten_pro_techniker_sortiert,
+                "unerledigte_auftraege": sorted(self.unerledigte_auftraege),
+                "solution": str(self.solution)
+            }
+
+        return json.dumps(
+            json_data
         )
 
     def __str__(self):

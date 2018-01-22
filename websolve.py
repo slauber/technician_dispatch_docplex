@@ -1,6 +1,6 @@
 from flask import Flask, request, send_from_directory, redirect
 from flask_cors import CORS
-import Routingproblem_mp2
+import routingproblem
 
 app = Flask(__name__, static_url_path='')
 CORS(app)
@@ -8,17 +8,35 @@ CORS(app)
 
 @app.route('/app/<path:path>')
 def serve_app(path):
+    """Statische Dateiausgabe
+
+    Sendet die gewünschte Datei zurück. Wird zur Ausgabe der Webapp verwendet.
+
+    """
     return send_from_directory('html', path)
 
 
 @app.route('/')
 @app.route('/app')
 def redirect_user():
+    """Weiterleitung
+
+    Leitet den User zur Webapp um.
+
+    """
     return redirect('/app/index.html')
 
 
 @app.route("/solve", methods=["GET"])
 def solve():
+    """Route zur JSON-API des Solvers, erwartet einen parametrisierten GET-Request
+
+    Berechnet optimale Route für das gegebene Problem
+
+    Beispiel: http://localhost:5000/solve?techniker=2&auftraege=4&skills=2&seed=1234&tageslaenge=500&max_tageslaenge=600
+
+    :return: response_class
+    """
     try:
         techniker = int(request.args.get('techniker'))
         auftraege = int(request.args.get('auftraege'))
@@ -32,14 +50,14 @@ def solve():
             status=500
         )
 
-    problem = Routingproblem_mp2.RoutingProblem()
+    problem = routingproblem.RoutingProblem()
     problem.generate_data(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
                           tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge, seed=seed)
 
-    problem.create_model()
-    problem.solve_model(timeout=25)
-    problem.print_solution(True, True)
-    json = problem.get_json()
+    problem.create_model()  # Modell aus generierten Daten herstellen
+    problem.solve_model(timeout=28)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
+    problem.print_solution(True, True)  # Debugausgabe in die Konsole
+    json = problem.get_json()  # JSON Daten für den Webclient
     return app.response_class(
         response=json,
         status=200,
