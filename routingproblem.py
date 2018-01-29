@@ -6,6 +6,21 @@ from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
 
 
+class Auftrag:
+    fruheste_start_zeit: int
+    dauer: int
+    spaeteste_end_zeit: int
+    strafe: int
+    skills: np.array
+
+    def __init__(self, fruehste_start_zeit, dauer, spaeteste_end_zeit, strafe, skills):
+        self.fruehste_start_zeit = fruehste_start_zeit
+        self.dauer = dauer
+        self.spaeteste_end_zeit = spaeteste_end_zeit
+        self.strafe = strafe
+        self.skills = skills
+
+
 class RoutingProblem:
     DISTANZMATRIX: np.array
     TECHNIKER_HAT_SKILL: np.array
@@ -106,8 +121,24 @@ class RoutingProblem:
         print('Technikerskills\n', self.TECHNIKER_HAT_SKILL)
         print('Auftragskills\n', self.AUFTRAG_BRAUCHT_SKILL)
 
-    def create_model(self):
+    def create_model(self, replanning_daten=None, neuer_auftrag: Auftrag = None):
         mdl = Model(name="Technician Dispatch Problem")
+
+        # Wenn ein neuer Auftrag hinzukommt -> Replanning, dann passe die Arrays und Matrizen an
+        if neuer_auftrag:
+            self.ANZ_AUFTRAEGE += 1
+            self.ANZ_WEGPUNKTE += 1
+            self.AUFTRAG_BRAUCHT_SKILL = np.vstack((self.AUFTRAG_BRAUCHT_SKILL, np.array(neuer_auftrag.skills)))
+            self.STRAFE_AUFTRAG = np.hstack((self.STRAFE_AUFTRAG, np.array(neuer_auftrag.strafe)))
+            self.FRUESTER_START = np.hstack((self.FRUESTER_START, np.array(neuer_auftrag.fruehste_start_zeit)))
+            self.AUFTRAGSDAUER = np.hstack((self.AUFTRAGSDAUER[:self.ANZ_AUFTRAEGE - 1], np.array(neuer_auftrag.dauer),
+                                            self.AUFTRAGSDAUER[self.ANZ_AUFTRAEGE - 1:]))
+
+            # Generiere neue Distanzen für den neuen Wegpunkt
+            zufallsdistanzen = np.random.randint(0, 120, size=self.ANZ_WEGPUNKTE)
+            zufallsdistanzen[self.ANZ_AUFTRAEGE - 1] = 0
+            print(zufallsdistanzen)
+
 
         # Abkürzung für loop ranges
         r_auftraege = range(self.ANZ_AUFTRAEGE)
@@ -261,6 +292,20 @@ class RoutingProblem:
             )
             for m in r_techniker
             for j in r_auftraege
+            for l in r_auftraege
+            if l != j
+        )
+
+        # Wenn er von einem Auftrag wegfährt, dann muss er dort auch hingefahren sein
+        mdl.add_constraints(
+            x[(m, j, l)] <= mdl.sum([
+                x[(m, t, j)]
+                for t in r_wegpunkte
+                if j != t
+            ]
+            )
+            for m in r_techniker
+            for j in r_auftraege
             for l in r_wegpunkte
             if l != j
         )
@@ -311,6 +356,7 @@ class RoutingProblem:
             for j in r_wegpunkte
             for s in r_skills
         )
+
 
         self.x = x
         self.start_zeit = start_zeit
@@ -424,7 +470,6 @@ class RoutingProblem:
     '''Parameter für replanning generieren
     
     '''
-
     def get_parameters_at_time(self, t: int):
         if self.solution:
             done_matrix = np.zeros((self.ANZ_TECHNIKER, self.ANZ_WEGPUNKTE, self.ANZ_WEGPUNKTE))
@@ -442,8 +487,10 @@ class RoutingProblem:
                             tatsaechliche_start_zeit[aktueller_auftrag] = self.solution.get_value(
                                 self.start_zeit[aktueller_auftrag])
                             done_matrix[techniker, letzter_auftrag, aktueller_auftrag] = 1
-            print(tatsaechliche_start_zeit)
-            print(done_matrix)
+            return {
+                'tatsaechliche_start_zeit': tatsaechliche_start_zeit,
+                'done_matrix': done_matrix
+            }
         else:
             raise Exception('No solution available to analyze')
 
@@ -455,11 +502,18 @@ class RoutingProblem:
 if __name__ == '__main__':
     problem = RoutingProblem()
 
-    problem.generate_data(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=410, max_tageslaenge=410,
-                          seed=237651)
-    problem.print_input()
+    problem.generate_data(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=250, max_tageslaenge=411,
+                          seed=231)
 
     problem.create_model()
+    problem.print_input()
+
+    # neuer_auftrag = Auftrag(190, 15, 250, 100, np.zeros(problem.ANZ_SKILLS, dtype=int))
+
     problem.solve_model()
     problem.print_solution(print_details=False, print_stats=False)
-    problem.get_parameters_at_time(150)
+
+    # replanning_um_150 = problem.get_parameters_at_time(150)
+    # neuer_auftrag = Auftrag(190,15,250,100, np.zeros(problem.ANZ_SKILLS))
+
+    #problem.create_model([replanning_um_150])
