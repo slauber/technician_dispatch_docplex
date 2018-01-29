@@ -56,10 +56,14 @@ def solve():
 
     problem.create_model()  # Modell aus generierten Daten herstellen
     problem.solve_model(timeout=28)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
-    problem.print_solution(True, True)  # Debugausgabe in die Konsole
-    json = problem.get_json()  # JSON Daten für den Webclient
-    return app.response_class(
-        response=json,
-        status=200,
-        mimetype='application/json'
-    )
+    json = problem.print_solution(True, True)  # JSON Daten für den Webclient und Debugdaten in der Konsole
+    if json:
+        return app.response_class(
+            response=json,
+            status=200,
+            mimetype='application/json'
+        )
+    else:
+        return app.response_class(
+            status=500
+        )

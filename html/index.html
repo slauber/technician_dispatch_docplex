@@ -24,7 +24,7 @@
     <title>Technician Dispatch Problem</title>
 
     <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
+          href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=de">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.teal-red.min.css">
     <link rel="stylesheet" href="styles.css">
@@ -47,9 +47,9 @@
             <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
             <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
                 <div class="demo-crumbs mdl-color-text--grey-500">
-                    Technician Dispatch Problem > Model Generator and Solver
+                    Technician Dispatch Problem > Simulator
                 </div>
-                <h3>Modellgenerator und -solver</h3>
+                <h3>Simulator</h3>
                 <form action="#">
                     <div class="mdl-grid">
                         <div class="mdl-cell mdl-cell--6-col">
@@ -126,13 +126,6 @@
                              style="display: none"></div>
                     </div>
                 </div>
-                <!--<p>
-                    Cillum dolor esse sit incididunt velit eiusmod magna ad nostrud officia aute dolor dolor. Magna esse
-                    ullamco pariatur adipisicing consectetur eu commodo officia. Ex cillum consequat mollit minim elit
-                    est deserunt occaecat nisi amet. Quis aliqua nostrud Lorem occaecat sunt. Eiusmod quis amet ullamco
-                    aliquip dolore ut incididunt duis adipisicing. Elit consequat nisi eiusmod aute ipsum sunt veniam do
-                    est. Occaecat mollit aliquip ut proident consectetur amet ex dolore consectetur aliqua elit.
-                </p>-->
                 <div class="solution-container">
 
                 </div>
@@ -175,11 +168,16 @@
             if (this.readyState == 4 && this.status == 200) {
                 enableFields();
                 var response = JSON.parse(this.responseText);
-                console.log(response);
-                appendSolution(response);
-                var clear_button = document.querySelector('#btnClear');
-                clear_button.disabled = false;
-                showToast("Lösung gefunden.");
+                console.log(response.solved);
+                if (response.solved === true) {
+                    appendSolution(response);
+                    var clear_button = document.querySelector('#btnClear');
+                    clear_button.disabled = false;
+                    showToast("Lösung gefunden.");
+                } else {
+                    showToast("Es konnte keine Lösung gefunden werden.");
+                }
+
             } else {
                 if (this.status == 500) {
                     showToast("Ein Fehler bei der Verarbeitung der Daten ist aufgetreten.");
@@ -270,26 +268,45 @@
                 html += "<i class=\"material-icons mdl-list__item-icon\">person</i>";
                 html += "Techniker " + key + " fährt von seinem Depot ";
                 for (var wegpunkt_i = 1; wegpunkt_i < result.outputs.fahrten_pro_techniker_sortiert[key].length - 1; wegpunkt_i++) {
-                    html += "zu Auftrag " + result.outputs.fahrten_pro_techniker_sortiert[key][wegpunkt_i] + ", danach "
+                    var auftrag = result.outputs.fahrten_pro_techniker_sortiert[key][wegpunkt_i];
+                    html += "zu Auftrag " + auftrag + " (Startzeit " + result.outputs.startzeiten[parseInt(auftrag)];
+                    html += "), danach ";
                 }
                 html += "wieder in sein Depot.</span></li>"
             }
         }
         html += "</ul>";
 
+        html += "<div class=\"mdl-grid\"><div class=\"mdl-cell\">";
         html += "<h5>Distanzmatrix</h5>" + createTable(result.inputs.distanzmatrix);
+        html += "</div></div>";
+
+        html += "<div class=\"mdl-grid\"><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Techniker Skills</h5>" + createTable(result.inputs.techniker_skills);
+        html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Auftrag Skills</h5>" + createTable(result.inputs.auftrag_skills);
+        html += "</div></div>";
+
+        html += "<div class=\"mdl-grid\"><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Frühster Start</h5>" + createTable(result.inputs.fruester_start);
-        html += "<h5>Auftragsdauer</h5>" + createTable(result.inputs.auftragsdauer);
+        html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Spätestes Ende</h5>" + createTable(result.inputs.spaetestes_ende);
+        html += "</div></div>";
+
+        html += "<div class=\"mdl-grid\"><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Strafkosten Auftrag</h5>" + createTable(result.inputs.strafe_auftrag);
+        html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Strafkosten Techniker</h5>" + createTable(result.inputs.strafe_techniker);
-        html += "<h6>Seed</h6><span>" + result.inputs.seed + "</span>";
+        html += "</div></div>";
+
+        html += "<div class=\"mdl-grid\"><div class=\"mdl-cell mdl-cell--6-col\">";
+        html += "<h5>Auftragsdauer</h5>" + createTable(result.inputs.auftragsdauer);
+        html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
+        html += "<h5>Seed</h5><span>" + result.inputs.seed + "</span>";
+        html += "</div></div>";
+
         solution.innerHTML = html + "<hr>";
         solutions.appendChild(solution);
-
-        console.log(result);
     }
 
     function clearSolutions() {
