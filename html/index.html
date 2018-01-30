@@ -30,23 +30,23 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
-    <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+<div class="tdp-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+    <header class="tdp-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
         <div class="mdl-layout__header-row">
             <span class="mdl-layout-title">Technician Dispatch Problem</span>
             <div class="mdl-layout-spacer"></div>
         </div>
     </header>
-    <div class="demo-ribbon"></div>
-    <div id="demo-toast-example" class="mdl-js-snackbar mdl-snackbar">
+    <div class="tdp-ribbon"></div>
+    <div id="tdp-toast-example" class="mdl-js-snackbar mdl-snackbar">
         <div class="mdl-snackbar__text"></div>
         <button class="mdl-snackbar__action" type="button"></button>
     </div>
-    <main class="demo-main mdl-layout__content">
-        <div class="demo-container mdl-grid">
+    <main class="tdp-main mdl-layout__content">
+        <div class="tdp-container mdl-grid">
             <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
-            <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
-                <div class="demo-crumbs mdl-color-text--grey-500">
+            <div class="tdp-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+                <div class="tdp-crumbs mdl-color-text--grey-500">
                     Technician Dispatch Problem > Simulator
                 </div>
                 <h3>Simulator</h3>
@@ -131,7 +131,7 @@
                 </div>
             </div>
         </div>
-        <footer class="demo-footer mdl-mini-footer">
+        <footer class="tdp-footer mdl-mini-footer">
             <div class="mdl-mini-footer--left-section">
                 <ul class="mdl-mini-footer--link-list">
                     <li><a href="#">Eine Arbeit von Sebastian Lauber und Yusuf Günes</a></li>
@@ -168,7 +168,6 @@
             if (this.readyState == 4 && this.status == 200) {
                 enableFields();
                 var response = JSON.parse(this.responseText);
-                console.log(response.solved);
                 if (response.solved === true) {
                     appendSolution(response);
                     var clear_button = document.querySelector('#btnClear');
@@ -220,7 +219,7 @@
 
     /* Funktioniert mit 2D Matrizen und Listen */
     function createTable(data) {
-        var table_html = "<table><tr>";
+        var table_html = "<table class='mdl-data-table'><thead><tr>";
         is2d = isArray(data[0]);
 
         for (var i_uber = -1; i_uber < (is2d ? data[0].length : data.length); i_uber++) {
@@ -231,7 +230,7 @@
                 table_html += "<th>&nbsp;</th>";
             }
         }
-        table_html += "</tr>";
+        table_html += "</tr></thead>";
 
         for (var i_matrix = 0; i_matrix < (is2d ? data.length : 1); i_matrix++) {
             table_html += "<tr>";
@@ -248,10 +247,18 @@
     }
 
     function appendSolution(result) {
+        var d = new Date();
+        var ts = d.getTime();
+
         var solutions = document.querySelector('.solution-container');
         var solution = document.createElement("div");
+        solution.classList.add('tdp-solution-wrapper');
 
-        var html = "<h3>Ergebnis</h3>";
+        var html = "<div class=\"tdp-card-wide mdl-card mdl-shadow--4dp\" id='" + ts + "'>";
+        html += "<div class=\"mdl-card__title\">";
+        html += "<h2 class=\"mdl-card__title-text\">Ergebnis für Seed " + result.inputs.seed + "</h2></div>";
+        html += "<div class=\"mdl-card__supporting-text\">";
+
         html += "<span>" + (result.outputs.alle_auftraege_erledigt ?
             "Es konnten alle Aufträge erledigt werden ✅." : "Es konnten nicht alle Aufträge erledigt werden ❌.") + "</span>";
 
@@ -261,7 +268,7 @@
 
         html += "<h4>" + (Object.keys(result.outputs.fahrten_pro_techniker_sortiert).length > 1 ? "Routen" : "Route") + "</h4>";
 
-        html += "<ul class=\"demo-list-item mdl-list\">";
+        html += "<ul class=\"tdp-list-item mdl-list\">";
         for (var key in result.outputs.fahrten_pro_techniker_sortiert) {
             if (result.outputs.fahrten_pro_techniker_sortiert.hasOwnProperty(key)) {
                 html += "<li class=\"mdl-list__item\"><span class=\"mdl-list__item-primary-content\">"
@@ -305,8 +312,28 @@
         html += "<h5>Seed</h5><span>" + result.inputs.seed + "</span>";
         html += "</div></div>";
 
-        solution.innerHTML = html + "<hr>";
-        solutions.appendChild(solution);
+
+        html += "<div><div class=\"mdl-card__actions mdl-card--border\">";
+        html += "<span class=\"tdp-card-image__filename\">" + d.toLocaleString() + "</span></div>";
+        html += "<div class=\"mdl-card__menu\">";
+        html += "<button onclick=\"clearSolution(" + ts + ")\"";
+        html += "class=\"mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect\">";
+        html += "<i class=\"material-icons\">clear</i></button></div></div>";
+
+        solution.innerHTML = html;
+
+        solutions.insertBefore(solution, solutions.firstChild);
+    }
+
+    function clearSolution(id) {
+        var node = document.getElementById(id).parentElement;
+        var parent = node.parentElement;
+        console.log(parent.children.length);
+        parent.removeChild(node);
+        console.log(parent.children.length);
+        if (parent.children.length === 0) {
+            clearSolutions();
+        }
     }
 
     function clearSolutions() {
@@ -318,7 +345,7 @@
 
     function showToast(text) {
         'use strict';
-        var snackbarContainer = document.querySelector('#demo-toast-example');
+        var snackbarContainer = document.querySelector('#tdp-toast-example');
         var data = {message: text};
         snackbarContainer.MaterialSnackbar.showSnackbar(data);
     }
