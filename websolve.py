@@ -1,3 +1,4 @@
+import numpy
 from flask import Flask, request, send_from_directory, redirect
 from flask_cors import CORS
 import routingproblem
@@ -38,6 +39,8 @@ def solve():
     :return: response_class
     """
     problem: routingproblem.RoutingProblem = None
+    replanning_auftrag: routingproblem.Auftrag = None
+    replanning_zeitpunkt: int = None
 
     try:
         print(request.args)
@@ -68,6 +71,18 @@ def solve():
                                      min_distanz, max_distanz, min_start, max_start, max_dauer, e_dauer, max_ende,
                                      e_ende,
                                      max_strafe_auftrag, e_strafe_auftrag, max_strafe_techniker, e_strafe_techniker)
+
+            if request.args.get('replanning') == "true":
+                replanning_zeitpunkt = int(request.args.get('reZeitpunkt'))
+                re_fruester_start = int(request.args.get('reFruesterStart'))
+                re_spaetestes_ende = int(request.args.get('reSpaetestesEnde'))
+                re_dauer = int(request.args.get('reDauer'))
+                re_strafe = int(request.args.get('reStrafe'))
+                re_skills = numpy.array(request.args.get('reSkills').split(',')).astype(dtype=int)
+                replanning_auftrag = routingproblem.Auftrag(re_fruester_start, re_dauer, re_spaetestes_ende, re_strafe,
+                                                            re_skills)
+
+
         else:
             problem = routingproblem.RoutingProblem(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
                                                     tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge)
@@ -77,17 +92,34 @@ def solve():
             status=500
         )
 
-
     problem.modell_aus_daten_aufstellen()  # Modell aus generierten Daten herstellen
-    problem.solve_model(timeout=29)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
-    json = problem.print_solution(False, False)  # JSON Daten für den Webclient und Debugdaten in der Konsole
-    if json:
+
+    if replanning_auftrag:
+        problem.solve_model(timeout=14)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
+
+        erstes_ergebnis = problem.json_ausgabe()
+
+        problem.modell_aus_daten_aufstellen(replanning_daten=problem.parameter_zum_zeitpunkt(replanning_zeitpunkt),
+                                            neuer_auftrag=replanning_auftrag)
+
+        problem.solve_model(timeout=14)
+
         return app.response_class(
-            response=json,
+            response=problem.json_ausgabe(),
             status=200,
             mimetype='application/json'
         )
+
     else:
-        return app.response_class(
-            status=500
-        )
+        problem.solve_model(timeout=29)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
+        json = problem.json_ausgabe()  # JSON Daten für den Webclient und Debugdaten in der Konsole
+        if json:
+            return app.response_class(
+                response=json,
+                status=200,
+                mimetype='application/json'
+            )
+        else:
+            return app.response_class(
+                status=500
+            )

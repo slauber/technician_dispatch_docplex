@@ -56,7 +56,7 @@
                     <div class="mdl-grid">
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                <input class="mdl-textfield__input" type="text" pattern="\d*"
                                        id="techniker" name="techniker" value="2">
                                 <label class="mdl-textfield__label" for="techniker">Anzahl Techniker</label>
                                 <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
@@ -64,7 +64,7 @@
                         </div>
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                <input class="mdl-textfield__input" type="text" pattern="\d*"
                                        id="auftraege" name="auftraege" value="4">
                                 <label class="mdl-textfield__label" for="auftraege">Anzahl Aufträge</label>
                                 <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
@@ -74,7 +74,7 @@
                     <div class="mdl-grid">
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                <input class="mdl-textfield__input" type="text" pattern="\d*"
                                        id="tageslaenge" name="tageslaenge" value="500">
                                 <label class="mdl-textfield__label" for="tageslaenge">Tageslänge (Arbeitszeit) in
                                     min</label>
@@ -83,7 +83,7 @@
                         </div>
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                <input class="mdl-textfield__input" type="text" pattern="\d*"
                                        id="maxTageslaenge" name="maxTageslaenge" value="600">
                                 <label class="mdl-textfield__label" for="maxTageslaenge">Maximale Arbeitzeit in
                                     min</label>
@@ -94,8 +94,8 @@
                     <div class="mdl-grid">
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
-                                       id="skills" name="skills" value="2">
+                                <input class="mdl-textfield__input" type="text" pattern="\d*"
+                                       id="skills" name="skills" value="2" onchange="updateReplanRegex()">
                                 <label class="mdl-textfield__label" for="skills">Skillsetgröße</label>
                                 <span class="mdl-textfield__error">Größe muss eine Zahl sein</span>
                             </div>
@@ -114,7 +114,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="seed" name="seed" value="">
                                     <label class="mdl-textfield__label" for="seed">Zufallsseed</label>
                                     <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
@@ -134,7 +134,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="minDistanz" name="minDistanz" value="">
                                     <label class="mdl-textfield__label" for="minDistanz">Min. Distanz
                                         (gleichverteilt)</label>
@@ -144,7 +144,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxDistanz" name="maxDistanz" value="">
                                     <label class="mdl-textfield__label" for="maxDistanz">Max. Distanz
                                         (gleichverteilt)</label>
@@ -156,7 +156,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="minStart" name="minStart" value="">
                                     <label class="mdl-textfield__label" for="minStart">Min. Startzeit Auftrag
                                         (gleichverteilt)</label>
@@ -166,7 +166,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxStart" name="maxStart" value="">
                                     <label class="mdl-textfield__label" for="maxStart">Max. Startzeit Auftrag
                                         (gleichverteilt)</label>
@@ -178,7 +178,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="eDauer" name="eDauer" value="">
                                     <label class="mdl-textfield__label" for="maxDistanz">Erwartungswert Auftragsdauer
                                         (binomialverteilt)</label>
@@ -188,7 +188,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxDauer" name="maxDauer" value="">
                                     <label class="mdl-textfield__label" for="maxDauer">Max. Auftragsdauer
                                         (binomialverteilt)</label>
@@ -200,7 +200,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="eEnde" name="eEnde" value="">
                                     <label class="mdl-textfield__label" for="eEnde">Erwartungswert Pufferzeit
                                         Auftragsende (binomialverteilt)</label>
@@ -210,7 +210,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxEnde" name="maxEnde" value="">
                                     <label class="mdl-textfield__label" for="maxEnde">Max. Pufferzeit Auftragsende
                                         (binomialverteilt)</label>
@@ -222,7 +222,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="eStrafeAuftrag" name="eStrafeAuftrag" value="">
                                     <label class="mdl-textfield__label" for="eStrafeAuftrag">Erwartungswert
                                         Auftragsstrafe pro min (binomialverteilt)</label>
@@ -232,7 +232,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxStrafeAuftrag" name="maxStrafeAuftrag" value="">
                                     <label class="mdl-textfield__label" for="maxStrafeAuftrag">Max. Auftragsstrafe pro
                                         min (binomialverteilt)</label>
@@ -244,7 +244,7 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="eStrafeTechniker" name="eStrafeTechniker" value="">
                                     <label class="mdl-textfield__label" for="eStrafeTechniker">Erwartungswert
                                         Technikerstrafe pro min (binomialverteilt)</label>
@@ -254,11 +254,83 @@
                             <div class="mdl-cell mdl-cell--6-col">
                                 <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                     <input class="mdl-textfield__input advanced-field" type="text"
-                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           pattern="\d*"
                                            id="maxStrafeTechniker" name="maxStrafeTechniker" value="">
                                     <label class="mdl-textfield__label" for="maxStrafeTechniker">Max. Technikerstrafe
                                         pro min (binomialverteilt)</label>
                                     <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="switch-replanning">
+                                    <input type="checkbox" id="switch-replanning" class="mdl-switch__input"
+                                           onchange="toggleReplan()">
+                                    <span class="mdl-switch__label">Replanning aktivieren</span>
+                                </label>
+                            </div>
+                        </div>
+                        <h5>Replanning</h5>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input replanning-field" type="text" pattern="\d*"
+                                           id="reZeitpunkt" name="reZeitpunkt">
+                                    <label class="mdl-textfield__label" for="reZeitpunkt">Replanningzeitpunkt</label>
+                                    <span class="mdl-textfield__error">Replanningzeitpunkt muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h6>Neuer Auftrag</h6>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field replanning-field" type="text"
+                                           pattern="\d*"
+                                           id="reFruesterStart" name="reFruesterStart" value="">
+                                    <label class="mdl-textfield__label" for="reFruesterStart">Frühster Start</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field replanning-field" type="text"
+                                           pattern="\d*"
+                                           id="reSpaetestesEnde" name="reSpaetestesEnde" value="">
+                                    <label class="mdl-textfield__label" for="reSpaetestesEnde">Spätestes Ende</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field replanning-field" type="text"
+                                           pattern="\d*"
+                                           id="reDauer" name="reDauer" value="">
+                                    <label class="mdl-textfield__label" for="reDauer">Auftragsdauer</label>
+                                    <span class="mdl-textfield__error">Auftragsdauer muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field replanning-field" type="text"
+                                           pattern="\d*"
+                                           id="reStrafe" name="reStrafe" value="">
+                                    <label class="mdl-textfield__label" for="reStrafe">Technikerstrafe pro min</label>
+                                    <span class="mdl-textfield__error">Technikerstrafe muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field replanning-field" type="text"
+                                           pattern="([01],){1}[01]{1}"
+                                           id="reSkills" name="reSkills" value="">
+                                    <label class="mdl-textfield__label" for="reSkills">Skillset (Format: 0,1,0)</label>
+                                    <span class="mdl-textfield__error">Auftragsdauer muss eine Zahl sein</span>
                                 </div>
                             </div>
                         </div>
@@ -336,6 +408,15 @@
         var maxStrafeTechniker = document.querySelector('#maxStrafeTechniker').value;
         var eStrafeTechniker = document.querySelector('#eStrafeTechniker').value;
 
+        var replanning = document.querySelector('#switch-replanning').checked;
+        var reZeitpunkt = document.querySelector('#reZeitpunkt').value;
+        var reFruesterStart = document.querySelector('#reFruesterStart').value;
+        var reSpaetestesEnde = document.querySelector('#reSpaetestesEnde').value;
+        var reDauer = document.querySelector('#reDauer').value;
+        var reStrafe = document.querySelector('#reStrafe').value;
+        var reSkills = document.querySelector('#reSkills').value;
+
+
         var advancedSwitch = document.querySelector("#switch-advanced").checked;
 
         xhttp.onreadystatechange = function () {
@@ -365,7 +446,9 @@
             "&seed=" + seed + "&minDistanz=" + minDistanz + "&maxDistanz=" + maxDistanz + "&minStart=" + minStart +
             "&maxStart=" + maxStart + "&maxDauer=" + maxDauer + "&eDauer=" + eDauer + "&maxEnde=" + maxEnde +
             "&eEnde=" + eEnde + "&maxStrafeAuftrag=" + maxStrafeAuftrag + "&eStrafeAuftrag=" + eStrafeAuftrag +
-            "&maxStrafeTechniker=" + maxStrafeTechniker + "&eStrafeTechniker=" + eStrafeTechniker + "&advanced=" + advancedSwitch,
+            "&maxStrafeTechniker=" + maxStrafeTechniker + "&eStrafeTechniker=" + eStrafeTechniker + "&advanced=" + advancedSwitch +
+            "&replanning=" + replanning + "&reZeitpunkt=" + reZeitpunkt + "&reFruesterStart=" + reFruesterStart + "&reSpaetestesEnde=" + reSpaetestesEnde +
+            "&reDauer=" + reDauer + "&reStrafe=" + reStrafe + "&reSkills=" + encodeURIComponent(reSkills),
             true);
         xhttp.send();
 
@@ -377,9 +460,25 @@
         if (!advancedSwitch.checked) {
             advancedPanel.style.display = "none";
             resetAdvanced();
+            document.querySelector("#switch-replanning").checked = false;
+            toggleReplan();
         } else {
             advancedPanel.style.display = "block";
         }
+    }
+
+    function toggleReplan() {
+        var replanElements = document.getElementsByClassName("replanning-field");
+        var replanSwitch = document.querySelector("#switch-replanning");
+        for (var i = 0; i < replanElements.length; i++) {
+            replanElements[i].disabled = !replanSwitch.checked;
+        }
+    }
+
+    function updateReplanRegex() {
+        skillsetSize = document.querySelector('#skills').value;
+        console.log(skillsetSize);
+        document.querySelector('#reSkills').pattern = "([01],){" + (skillsetSize - 1) + "}[01]{1}";
     }
 
     function enableFields() {
@@ -457,13 +556,17 @@
 
         var solutions = document.querySelector('.solution-container');
         var solution = document.createElement("div");
+        var anzRouten = Object.keys(result.outputs.fahrten_pro_techniker_sortiert).length;
+
         solution.classList.add('tdp-solution-wrapper');
 
         var html = "<div class=\"tdp-card-wide mdl-card mdl-shadow--4dp\" id='" + ts + "'>";
         html += "<div class=\"mdl-card__title\">";
         html += "<h2 class=\"mdl-card__title-text\">Ergebnis für Seed " + result.inputs.seed + "</h2></div>";
         html += "<div class=\"mdl-card__supporting-text\">";
-
+        if (result.inputs.replanned) {
+            html += "<span>Diese Planung wurde mit Replanning durchgeführt</span><br>";
+        }
         html += "<span>" + (result.outputs.alle_auftraege_erledigt ?
             "Es konnten alle Aufträge erledigt werden ✅." : "Es konnten nicht alle Aufträge erledigt werden ❌.") + "</span>";
 
@@ -471,7 +574,9 @@
             html += "<h4>Unerledigte Aufträge</h4><span>" + result.outputs.unerledigte_auftraege + "</span>"
         }
 
-        html += "<h4>" + (Object.keys(result.outputs.fahrten_pro_techniker_sortiert).length > 1 ? "Routen" : "Route") + "</h4>";
+        if (anzRouten > 0) {
+            html += "<h4>" + (anzRouten > 1 ? "Routen" : "Route") + "</h4>";
+        }
 
         html += "<ul class=\"tdp-list-item mdl-list\">";
         for (var key in result.outputs.fahrten_pro_techniker_sortiert) {
@@ -516,9 +621,11 @@
         html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "</div></div>";
 
-
+        /* Zeitstempel */
         html += "<div><div class=\"mdl-card__actions mdl-card--border\">";
         html += "<span class=\"tdp-card-image__filename\">" + d.toLocaleString() + "</span></div>";
+
+        /* Kartenmenü */
         html += "<div class=\"mdl-card__menu\">";
         html += "<button onclick=\"clearSolution(" + ts + ")\"";
         html += "class=\"mdl-button mdl-button--icon mdl-js-button mdl-js-ripple-effect\">";
@@ -532,9 +639,7 @@
     function clearSolution(id) {
         var node = document.getElementById(id).parentElement;
         var parent = node.parentElement;
-        console.log(parent.children.length);
         parent.removeChild(node);
-        console.log(parent.children.length);
         if (parent.children.length === 0) {
             clearSolutions();
         }

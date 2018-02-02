@@ -46,6 +46,9 @@ class Replanning_Daten:
         self.start_zeit = start_zeit
         self.x = x
 
+    def __str__(self):
+        return "Startzeiten:\n{}\nAbgeschlossene Fahrten".format(self.start_zeit, self.x)
+
 
 class Json_Antwort:
     """
@@ -62,9 +65,10 @@ class Json_Antwort:
         strafe_techniker: list
         techniker_skills: list
         seed: int
+        replanned: int
 
         def __init__(self, distanzmatrix, fruester_start, auftragsdauer, spaetestes_ende, auftrag_skills,
-                     strafe_auftrag, strafe_techniker, techniker_skills, seed):
+                     strafe_auftrag, strafe_techniker, techniker_skills, seed, replanned):
             self.distanzmatrix = distanzmatrix
             self.fruester_start = fruester_start
             self.auftragsdauer = auftragsdauer
@@ -74,6 +78,7 @@ class Json_Antwort:
             self.strafe_techniker = strafe_techniker
             self.techniker_skills = techniker_skills
             self.seed = seed
+            self.replanned = replanned
 
     class Outputs:
         alle_auftraege_erledigt: bool
@@ -97,10 +102,10 @@ class Json_Antwort:
     def __init__(self, distanzmatrix, fruester_start, auftragsdauer, spaetestes_ende, auftrag_skills, strafe_auftrag,
                  strafe_techniker, techniker_skills, seed,
                  alle_auftraege_erledigt, fahrten_pro_techniker_sortiert, startzeiten, unerledigte_auftraege, solution,
-                 solved):
+                 solved, replanned=False):
         self.solved = solved
         self.inputs = self.Inputs(distanzmatrix, fruester_start, auftragsdauer, spaetestes_ende, auftrag_skills,
-                                  strafe_auftrag, strafe_techniker, techniker_skills, seed)
+                                  strafe_auftrag, strafe_techniker, techniker_skills, seed, replanned)
         self.outputs = self.Outputs(alle_auftraege_erledigt, fahrten_pro_techniker_sortiert, startzeiten,
                                     unerledigte_auftraege, solution)
 
@@ -136,6 +141,7 @@ class RoutingProblem:
     ANZ_SKILLS: int
 
     SEED: int
+    REPLANNED = False
 
     mdl: Model
     solution: SolveSolution
@@ -528,6 +534,8 @@ Seed: {}
 
         # Setze vorberechnete Daten als constraint fix
         if replanning_daten:
+            self.REPLANNED = True
+
             mdl.add_constraints(
                 start_zeit[i] == replanning_daten.start_zeit[i]
                 for i in range(self.ANZ_AUFTRAEGE - 1)
@@ -541,6 +549,8 @@ Seed: {}
                 for j in range(self.ANZ_AUFTRAEGE - 1)
                 if replanning_daten.x[m][i][j] != 0
             )
+        else:
+            self.REPLANNED = False
 
         self.x = x
         self.start_zeit = start_zeit
@@ -555,19 +565,11 @@ Seed: {}
         self.mdl.solve()
         self.solution = self.mdl.solution
 
-    def print_solution(self, print_stats=False, print_details=False):
-        """Gibt die Lösung auf der command line aus
-        :param print_stats: bool (gibt erweiterte Informationen des Solvers aus)
-        :param print_details: bool (gibt alle Lösungswerte und das Linearprogramm aus)
-        :return: str (enthält in JSON kodierte Daten, die vom Webserver ausgeliefert werden)
-        """
-        if print_stats:
-            print(self.mdl.get_solve_details())
+        # Datenaufbereitung zur einfacheren Verwendung
         if self.solution:
-            if print_details:
-                print(self.solution)
-                print(self.mdl.export_as_lp_string())
             solution_dict = self.solution.as_dict()
+
+            # Fahrten pro Techniker zugreifbar machen
             fahrten_pro_techniker: Dict[int, List] = {}
             for m in range(self.ANZ_TECHNIKER):
                 for i in range(self.ANZ_WEGPUNKTE):
@@ -578,6 +580,7 @@ Seed: {}
                             else:
                                 fahrten_pro_techniker[m] = [(i, j)]
 
+            # Fahrten pro Techniker in korrekter Reihenfolge ausgeben
             self.fahrten_pro_techniker_sortiert = {}
             for techniker, fahrten in fahrten_pro_techniker.items():
                 current_node = techniker + self.ANZ_AUFTRAEGE
@@ -596,26 +599,40 @@ Seed: {}
                     if (current_node == techniker + self.ANZ_AUFTRAEGE):
                         break
 
+            # Überprüfe, ob alle Fahrten angetreten wurden
+            self.alle_auftraege_erledigt = set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]).issubset(
+                set(self.solution.as_dict().keys()))
+
+            self.unerledigte_auftraege = []
+            if not self.alle_auftraege_erledigt:
+                restauftraege = [item for item in set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]) if
+                                 item not in set(self.solution.as_dict().keys())]
+                for auftrag in restauftraege:
+                    self.unerledigte_auftraege.append(int(auftrag[10:]))
+
+    def print_solution(self, print_stats=False, print_details=False, print_lp=False):
+        """Gibt die Lösung auf der command line aus
+        :param print_stats: bool (gibt erweiterte Informationen des Solvers aus)
+        :param print_details: bool (gibt alle Lösungswerte und das Linearprogramm aus)
+        """
+        if print_stats:
+            print(self.mdl.get_solve_details())
+        if self.solution:
+            if print_details:
+                print(self.solution)
+            if print_lp:
+                print(self.mdl.export_as_lp_string())
+
             for techniker, fahrten in self.fahrten_pro_techniker_sortiert.items():
                 techniker_str = "Techniker {} fährt von seinem Depot ".format(techniker)
                 for fahrt in fahrten:
                     if fahrt != self.ANZ_AUFTRAEGE + techniker:
                         techniker_str = techniker_str + "zu Auftrag {} (Startzeit: {}) ".format(fahrt,
-                                                                                                solution_dict[
+                                                                                                self.solution.as_dict()[
                                                                                                     "Startzeit_{}".format(
                                                                                                         fahrt)])
                 techniker_str = techniker_str + "und zurück zu seinem Depot."
-
                 print(techniker_str)
-
-            self.alle_auftraege_erledigt = set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]).issubset(
-                set(solution_dict.keys()))
-            restauftraege = [item for item in set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]) if
-                             item not in set(solution_dict.keys())]
-
-            self.unerledigte_auftraege = []
-            for auftrag in restauftraege:
-                self.unerledigte_auftraege.append(int(auftrag[10:]))
 
             if self.alle_auftraege_erledigt:
                 print("Es wurden alle Aufträge in der Periode erledigt")
@@ -623,7 +640,20 @@ Seed: {}
                 print("Es konnten nicht alle Aufträge in der Periode erledigt werden.")
                 print(self.unerledigte_auftraege)
 
+        else:
+            print("Es gibt keine Lösung")
+            return json.dumps(
+                {
+                    "solved": False
+                }
+            )
 
+    def json_ausgabe(self):
+        """Formatiert die Daten in JSON
+
+        :return: str (enthält in JSON kodierte Daten, die vom Webserver ausgeliefert werden)
+        """
+        if self.solution:
             start_zeit_geloest = self.solution.get_values(self.start_zeit[i] for i in range(self.ANZ_AUFTRAEGE))
             startzeiten = {i: start_zeit_geloest[i] for i in range(self.ANZ_AUFTRAEGE)}
 
@@ -642,17 +672,15 @@ Seed: {}
                 fahrten_pro_techniker_sortiert=self.fahrten_pro_techniker_sortiert,
                 startzeiten=startzeiten,
                 unerledigte_auftraege=sorted(self.unerledigte_auftraege),
-                solution=str(self.solution)
+                solution=str(self.solution),
+                replanned=self.REPLANNED
             )
 
             return json_data.get_json()
         else:
-            print("Es gibt keine Lösung")
-            return json.dumps(
-                {
-                    "solved": False
-                }
-            )
+            json_data = {"solved": False}
+            return json.dumps(json_data);
+
 
     def parameter_zum_zeitpunkt(self, t: int):
         """Ermittle den Zustand zum Zeitpunkt t, um ihn für das Replanning verwenden zu können.
@@ -672,22 +700,23 @@ Seed: {}
             for techniker, auftraege in self.fahrten_pro_techniker_sortiert.items():
                 letzter_auftrag = techniker + self.ANZ_AUFTRAEGE
                 for aktueller_auftrag in auftraege:
-                    if aktueller_auftrag is not letzter_auftrag:
-                        aktuelle_startzeit = self.solution.get_value(self.start_zeit[aktueller_auftrag])
-                        abfahrt = aktuelle_startzeit - self.DISTANZMATRIX[letzter_auftrag][aktueller_auftrag]
+                    if aktueller_auftrag is not techniker + self.ANZ_AUFTRAEGE:
+                        abfahrt = self.solution.get_value(self.start_zeit[letzter_auftrag]) + self.AUFTRAGSDAUER[
+                            letzter_auftrag]
                         if abfahrt < t:
                             tatsaechliche_start_zeit[aktueller_auftrag] = self.solution.get_value(
                                 self.start_zeit[aktueller_auftrag])
                             done_matrix[techniker, letzter_auftrag, aktueller_auftrag] = True
-            return Replanning_Daten(tatsaechliche_start_zeit, done_matrix)
+                    letzter_auftrag = aktueller_auftrag
+            rp_daten = Replanning_Daten(tatsaechliche_start_zeit, done_matrix)
+            return rp_daten
         else:
             raise Exception('No solution available to analyze')
 
 
 
 if __name__ == '__main__':
-    problem = RoutingProblem(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=250, max_tageslaenge=411)
-    print('Seed', problem.SEED, '\n')
+    problem = RoutingProblem(anz_techniker=2, anz_auftraege=2, anz_skills=2, tageslaenge=400, max_tageslaenge=500)
 
     problem.modell_aus_daten_aufstellen()
 
@@ -699,6 +728,14 @@ if __name__ == '__main__':
     print('\nNeuer Auftrag: ', neuer_auftrag_200)
     print('Replanning erfolgt zur t=200\n')
     problem.modell_aus_daten_aufstellen(replanning_daten=replanning_um_200, neuer_auftrag=neuer_auftrag_200)
+
+    problem.solve_model()
+    problem.print_solution(print_details=False, print_stats=False)
+
+    print('Replanning erfolgt zur t=300\n')
+    replanning_um_300 = problem.parameter_zum_zeitpunkt(300)
+    neuer_auftrag_300 = Auftrag(298, 15, 390, 5, np.array([1, 0]))
+    problem.modell_aus_daten_aufstellen(replanning_um_300, neuer_auftrag_300)
 
     problem.solve_model()
     problem.print_solution(print_details=False, print_stats=False)
