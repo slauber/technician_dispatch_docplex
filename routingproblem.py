@@ -65,17 +65,42 @@ class RoutingProblem:
     startzeiten = {}
     unerledigte_auftraege = []
 
-    def __init__(self):
-        self.mdl = None
+    def __init__(self, anz_techniker: int = None, anz_auftraege: int = None, anz_skills: int = None,
+                 tageslaenge: int = None, max_tageslaenge: int = None, seed: int = None):
         self.solution = None
         self.alle_auftraege_erledigt = False
         self.fahrten_pro_techniker_sortiert = {}
         self.startzeiten = {}
         self.unerledigte_auftraege = []
+        self.mdl = None
         self.x = {}
         self.start_zeit = []
 
-    def generate_data(self, anz_techniker: int, anz_auftraege: int, anz_skills: int,
+        if (anz_techniker and anz_auftraege and anz_skills and tageslaenge and max_tageslaenge and seed):
+            self.daten_generieren(anz_techniker, anz_auftraege, anz_skills, tageslaenge, max_tageslaenge, seed)
+
+    def __str__(self):
+        if hasattr(self, "ANZ_WEGPUNKTE"):
+            return """[RoutingProblem
+
+[Modell]
+Distanzmatrix:\n{}\n
+Frühste Startzeit: \t{}
+Auftragsdauer: \t\t{}
+Späteste Endzeit: \t{}
+Technikerskills:
+{}
+Auftragskills:
+{}
+Seed: {}
+
+]
+        """.format(self.DISTANZMATRIX, self.FRUESTER_START, self.AUFTRAGSDAUER, self.SPAETESTES_ENDE,
+                   self.TECHNIKER_HAT_SKILL, self.AUFTRAG_BRAUCHT_SKILL, self.SEED)
+        else:
+            return '[RoutingProblem\n\n[Modell]\nNicht vorhanden\n\n]'
+
+    def daten_generieren(self, anz_techniker: int, anz_auftraege: int, anz_skills: int,
                       tageslaenge: int, max_tageslaenge: int, seed: int):
         anz_wegpunkte = anz_techniker + anz_auftraege
         np.random.seed(seed)
@@ -90,18 +115,20 @@ class RoutingProblem:
         self.DISTANZMATRIX = distanzmatrix
         self.TECHNIKER_HAT_SKILL = np.random.randint(0, 2, size=(anz_techniker, anz_skills))
         self.AUFTRAG_BRAUCHT_SKILL = np.random.randint(0, 2, size=(anz_auftraege, anz_skills))
-        self.AUFTRAGSDAUER = np.random.randint(10, 120, size=anz_wegpunkte)
+
+        # Binomialverteilung, Aufträge dauern hier üblicherweise eine Stunde
+        self.AUFTRAGSDAUER = np.random.binomial(n=180, p=0.33, size=anz_wegpunkte)
         for i in range(anz_techniker):
             self.AUFTRAGSDAUER[anz_auftraege + i] = 0
 
-        self.FRUESTER_START = np.random.randint(0, 120, size=anz_auftraege)
+        self.FRUESTER_START = np.random.randint(0, 300, size=anz_auftraege)
 
-        self.SPAETESTES_ENDE = np.zeros(anz_auftraege)
+        self.SPAETESTES_ENDE = np.zeros(anz_auftraege, dtype=int)
         for i in range(anz_auftraege):
-            self.SPAETESTES_ENDE[i] = self.FRUESTER_START[i] + self.AUFTRAGSDAUER[i] + np.random.randint(30, 120)
+            self.SPAETESTES_ENDE[i] = self.FRUESTER_START[i] + self.AUFTRAGSDAUER[i] + np.random.binomial(n=120, p=0.5)
 
-        self.STRAFE_AUFTRAG = np.random.randint(25, 300, size=anz_auftraege)
-        self.STRAFE_TECHNIKER = np.random.randint(5, 20, size=anz_techniker)
+        self.STRAFE_AUFTRAG = np.random.binomial(n=100, p=0.25, size=anz_auftraege)
+        self.STRAFE_TECHNIKER = np.random.binomial(n=100, p=0.25, size=anz_techniker)
 
         self.ANZ_AUFTRAEGE = anz_auftraege
         self.ANZ_SKILLS = anz_skills
@@ -116,17 +143,9 @@ class RoutingProblem:
 
         if (not skill_check.all()):
             print("Warning - Generated data was inconsistent - Regenerating using seed ", seed + 1)
-            self.generate_data(anz_techniker, anz_auftraege, anz_skills, tageslaenge, max_tageslaenge, seed + 1)
+            self.daten_generieren(anz_techniker, anz_auftraege, anz_skills, tageslaenge, max_tageslaenge, seed + 1)
 
-    def print_input(self):
-        print('Distanzmatrix\n', self.DISTANZMATRIX)
-        print('Frühster Start\n', self.FRUESTER_START)
-        print('Auftragsdauer\n', self.AUFTRAGSDAUER)
-        print('Spätestes Ende\n', self.SPAETESTES_ENDE)
-        print('Technikerskills\n', self.TECHNIKER_HAT_SKILL)
-        print('Auftragskills\n', self.AUFTRAG_BRAUCHT_SKILL)
-
-    def create_model(self, replanning_daten=None, neuer_auftrag: Auftrag = None):
+    def modell_aus_daten_aufstellen(self, replanning_daten=None, neuer_auftrag: Auftrag = None):
         mdl = Model(name="Technician Dispatch Problem")
 
         # Wenn ein neuer Auftrag hinzukommt -> Replanning, dann passe die Arrays und Matrizen an
@@ -138,7 +157,8 @@ class RoutingProblem:
             self.FRUESTER_START = np.hstack((self.FRUESTER_START, np.array(neuer_auftrag.fruehste_start_zeit)))
             self.AUFTRAGSDAUER = np.hstack((self.AUFTRAGSDAUER[:self.ANZ_AUFTRAEGE - 1], np.array(neuer_auftrag.dauer),
                                             self.AUFTRAGSDAUER[self.ANZ_AUFTRAEGE - 1:]))
-            self.SPAETESTES_ENDE = np.hstack((self.SPAETESTES_ENDE, np.array(neuer_auftrag.spaeteste_end_zeit)))
+            self.SPAETESTES_ENDE = np.hstack(
+                (self.SPAETESTES_ENDE, np.array(neuer_auftrag.spaeteste_end_zeit, dtype=int)))
 
             # Generiere neue Distanzen für den neuen Wegpunkt
             zufallsdistanzen = np.random.randint(0, 120, size=self.ANZ_WEGPUNKTE)
@@ -496,8 +516,8 @@ class RoutingProblem:
 
     def parameter_zum_zeitpunkt(self, t: int):
         if self.solution:
-            done_matrix = np.zeros((self.ANZ_TECHNIKER, self.ANZ_WEGPUNKTE, self.ANZ_WEGPUNKTE))
-            tatsaechliche_start_zeit = np.zeros(self.ANZ_AUFTRAEGE)
+            done_matrix = np.zeros((self.ANZ_TECHNIKER, self.ANZ_WEGPUNKTE, self.ANZ_WEGPUNKTE), dtype=bool)
+            tatsaechliche_start_zeit = np.zeros(self.ANZ_AUFTRAEGE, dtype=int)
 
             for techniker, auftraege in self.fahrten_pro_techniker_sortiert.items():
                 letzter_auftrag = techniker + self.ANZ_AUFTRAEGE
@@ -508,7 +528,7 @@ class RoutingProblem:
                         if abfahrt < t:
                             tatsaechliche_start_zeit[aktueller_auftrag] = self.solution.get_value(
                                 self.start_zeit[aktueller_auftrag])
-                            done_matrix[techniker, letzter_auftrag, aktueller_auftrag] = 1
+                            done_matrix[techniker, letzter_auftrag, aktueller_auftrag] = True
             return {
                 'tatsaechliche_start_zeit': tatsaechliche_start_zeit,
                 'done_matrix': done_matrix
@@ -517,19 +537,17 @@ class RoutingProblem:
             raise Exception('No solution available to analyze')
 
 
-    def __str__(self):
-        return "Routingproblem"
-
 
 if __name__ == '__main__':
-    problem = RoutingProblem()
-
-    problem.generate_data(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=250, max_tageslaenge=411,
-                          seed=231)
+    problem = RoutingProblem(anz_techniker=2, anz_auftraege=4, anz_skills=2, tageslaenge=250, max_tageslaenge=411,
+                             seed=231)
+    print(problem)
 
     neuer_auftrag = Auftrag(190, 15, 250, 100, np.zeros(problem.ANZ_SKILLS, dtype=int))
 
-    problem.create_model()
+    problem.modell_aus_daten_aufstellen()
+
+    print(problem)
 
     problem.solve_model()
     problem.print_solution(print_details=False, print_stats=False)
@@ -538,12 +556,7 @@ if __name__ == '__main__':
 
     print('\nNeuer Auftrag: ', neuer_auftrag)
     print('Replanning erfolgt zur t=150\n')
-    problem.create_model(replanning_daten=replanning_um_150, neuer_auftrag=neuer_auftrag)
+    problem.modell_aus_daten_aufstellen(replanning_daten=replanning_um_150, neuer_auftrag=neuer_auftrag)
 
     problem.solve_model()
     problem.print_solution(print_details=False, print_stats=False)
-
-    #
-    # neuer_auftrag = Auftrag(190,15,250,100, np.zeros(problem.ANZ_SKILLS))
-
-    #problem.create_model([replanning_um_150])

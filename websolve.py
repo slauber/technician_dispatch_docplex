@@ -50,13 +50,12 @@ def solve():
             status=500
         )
 
-    problem = routingproblem.RoutingProblem()
-    problem.generate_data(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
-                          tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge, seed=seed)
+    problem = routingproblem.RoutingProblem(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
+                                            tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge, seed=seed)
 
-    problem.create_model()  # Modell aus generierten Daten herstellen
-    problem.solve_model(timeout=28)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
-    json = problem.print_solution(True, True)  # JSON Daten für den Webclient und Debugdaten in der Konsole
+    problem.modell_aus_daten_aufstellen()  # Modell aus generierten Daten herstellen
+    problem.solve_model(timeout=29)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
+    json = problem.print_solution(False, False)  # JSON Daten für den Webclient und Debugdaten in der Konsole
     if json:
         return app.response_class(
             response=json,
