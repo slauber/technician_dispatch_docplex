@@ -1,14 +1,14 @@
 .tdp-ribbon {
     width: 100%;
-    height: 40vh;
-    background-color: #3F51B5;
+    height: 25vh;
+    background-color: #009688;
     -webkit-flex-shrink: 0;
     -ms-flex-negative: 0;
     flex-shrink: 0;
 }
 
 .tdp-main {
-    margin-top: -35vh;
+    margin-top: -25vh;
     -webkit-flex-shrink: 0;
     -ms-flex-negative: 0;
     flex-shrink: 0;
@@ -44,7 +44,7 @@
 }
 
 .tdp-card-image__filename {
-    color: #222;
+    color: #009688;
     font-size: 14px;
     font-weight: 500;
 }
@@ -55,4 +55,13 @@
 
 .tdp-solution-wrapper {
     padding-bottom: 40px;
+}
+
+.h-space-30 {
+    width: 30px;
+    display: inline;
+}
+
+#kit-logo {
+    width: 100px;
 }

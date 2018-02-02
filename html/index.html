@@ -26,13 +26,15 @@
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=de">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.teal-red.min.css">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.teal-orange.min.css"/>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body onload="resetAdvanced(); clearSolutions();">
 <div class="tdp-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
     <header class="tdp-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
         <div class="mdl-layout__header-row">
+            <img id="kit-logo" src="kit_logo.png">
+            <div class="h-space-30"></div>
             <span class="mdl-layout-title">Technician Dispatch Problem</span>
             <div class="mdl-layout-spacer"></div>
         </div>
@@ -73,24 +75,6 @@
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                 <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
-                                       id="skills" name="skills" value="2">
-                                <label class="mdl-textfield__label" for="skills">Skillsetgröße</label>
-                                <span class="mdl-textfield__error">Größe muss eine Zahl sein</span>
-                            </div>
-                        </div>
-                        <div class="mdl-cell mdl-cell--6-col">
-                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
-                                       id="seed" name="seed" value="1234">
-                                <label class="mdl-textfield__label" for="seed">Zufallsseed</label>
-                                <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mdl-grid">
-                        <div class="mdl-cell mdl-cell--6-col">
-                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
                                        id="tageslaenge" name="tageslaenge" value="500">
                                 <label class="mdl-textfield__label" for="tageslaenge">Tageslänge (Arbeitszeit) in
                                     min</label>
@@ -100,13 +84,186 @@
                         <div class="mdl-cell mdl-cell--6-col">
                             <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
                                 <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
-                                       id="max_tageslaenge" name="max_tageslaenge" value="600">
-                                <label class="mdl-textfield__label" for="max_tageslaenge">Maximale Arbeitzeit in
+                                       id="maxTageslaenge" name="maxTageslaenge" value="600">
+                                <label class="mdl-textfield__label" for="maxTageslaenge">Maximale Arbeitzeit in
                                     min</label>
                                 <span class="mdl-textfield__error">Länge muss eine Zahl sein</span>
                             </div>
                         </div>
                     </div>
+                    <div class="mdl-grid">
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?"
+                                       id="skills" name="skills" value="2">
+                                <label class="mdl-textfield__label" for="skills">Skillsetgröße</label>
+                                <span class="mdl-textfield__error">Größe muss eine Zahl sein</span>
+                            </div>
+                        </div>
+                        <div class="mdl-cell mdl-cell--6-col">
+                            <label class="mdl-switch mdl-js-switch mdl-js-ripple-effect" for="switch-advanced">
+                                <input type="checkbox" id="switch-advanced" class="mdl-switch__input"
+                                       onchange="toggleAdvanced()">
+                                <span class="mdl-switch__label">Erweiterter Modus</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="panel-advanced" style="display: none">
+                        <h5>Erweiterte Einstellungen</h5>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="seed" name="seed" value="">
+                                    <label class="mdl-textfield__label" for="seed">Zufallsseed</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--12-col">
+                                <h6>Zufallsverteilungen für Modellparameter (Distanzen und Zeiten werden in Minuten
+                                    bemessen).
+                                    Warnung: Unterschiedliche Werte für die Zufallsbereiche sind trotz gleichem Seed
+                                    nicht mehr vergleichbar!</h6>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="minDistanz" name="minDistanz" value="">
+                                    <label class="mdl-textfield__label" for="minDistanz">Min. Distanz
+                                        (gleichverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxDistanz" name="maxDistanz" value="">
+                                    <label class="mdl-textfield__label" for="maxDistanz">Max. Distanz
+                                        (gleichverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="minStart" name="minStart" value="">
+                                    <label class="mdl-textfield__label" for="minStart">Min. Startzeit Auftrag
+                                        (gleichverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxStart" name="maxStart" value="">
+                                    <label class="mdl-textfield__label" for="maxStart">Max. Startzeit Auftrag
+                                        (gleichverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="eDauer" name="eDauer" value="">
+                                    <label class="mdl-textfield__label" for="maxDistanz">Erwartungswert Auftragsdauer
+                                        (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxDauer" name="maxDauer" value="">
+                                    <label class="mdl-textfield__label" for="maxDauer">Max. Auftragsdauer
+                                        (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="eEnde" name="eEnde" value="">
+                                    <label class="mdl-textfield__label" for="eEnde">Erwartungswert Pufferzeit
+                                        Auftragsende (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxEnde" name="maxEnde" value="">
+                                    <label class="mdl-textfield__label" for="maxEnde">Max. Pufferzeit Auftragsende
+                                        (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="eStrafeAuftrag" name="eStrafeAuftrag" value="">
+                                    <label class="mdl-textfield__label" for="eStrafeAuftrag">Erwartungswert
+                                        Auftragsstrafe pro min (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxStrafeAuftrag" name="maxStrafeAuftrag" value="">
+                                    <label class="mdl-textfield__label" for="maxStrafeAuftrag">Max. Auftragsstrafe pro
+                                        min (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mdl-grid">
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="eStrafeTechniker" name="eStrafeTechniker" value="">
+                                    <label class="mdl-textfield__label" for="eStrafeTechniker">Erwartungswert
+                                        Technikerstrafe pro min (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                            <div class="mdl-cell mdl-cell--6-col">
+                                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                                    <input class="mdl-textfield__input advanced-field" type="text"
+                                           pattern="-?[0-9]*(\.[0-9]+)?"
+                                           id="maxStrafeTechniker" name="maxStrafeTechniker" value="">
+                                    <label class="mdl-textfield__label" for="maxStrafeTechniker">Max. Technikerstrafe
+                                        pro min (binomialverteilt)</label>
+                                    <span class="mdl-textfield__error">Anzahl muss eine Zahl sein</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </form>
                 <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
                         onclick="processInput()" id="btnSolve">
@@ -120,6 +277,7 @@
                         onclick="clearSolutions()" id="btnClear" disabled>
                     Lösungen leeren
                 </button>
+
                 <div class="mdl-grid">
                     <div class="mdl-cell">
                         <div id="progress_indicator" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"
@@ -163,7 +321,23 @@
         var skills = document.querySelector('#skills').value;
         var seed = document.querySelector('#seed').value;
         var tageslaenge = document.querySelector('#tageslaenge').value;
-        var max_tageslaenge = document.querySelector('#max_tageslaenge').value;
+        var maxTageslaenge = document.querySelector('#maxTageslaenge').value;
+
+        var minDistanz = document.querySelector('#minDistanz').value;
+        var maxDistanz = document.querySelector('#maxDistanz').value;
+        var minStart = document.querySelector('#minStart').value;
+        var maxStart = document.querySelector('#maxStart').value;
+        var maxDauer = document.querySelector('#maxDauer').value;
+        var eDauer = document.querySelector('#eDauer').value;
+        var maxEnde = document.querySelector('#maxEnde').value;
+        var eEnde = document.querySelector('#eEnde').value;
+        var maxStrafeAuftrag = document.querySelector('#maxStrafeAuftrag').value;
+        var eStrafeAuftrag = document.querySelector('#eStrafeAuftrag').value;
+        var maxStrafeTechniker = document.querySelector('#maxStrafeTechniker').value;
+        var eStrafeTechniker = document.querySelector('#eStrafeTechniker').value;
+
+        var advancedSwitch = document.querySelector("#switch-advanced").checked;
+
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
                 enableFields();
@@ -184,13 +358,28 @@
                 }
             }
         };
+
         xhttp.open("GET",
             "http://localhost:5000/solve?techniker=" + techniker + "&auftraege=" + auftraege +
-            "&skills=" + skills + "&tageslaenge=" + tageslaenge + "&max_tageslaenge=" + max_tageslaenge +
-            "&seed=" + seed,
+            "&skills=" + skills + "&tageslaenge=" + tageslaenge + "&maxTageslaenge=" + maxTageslaenge +
+            "&seed=" + seed + "&minDistanz=" + minDistanz + "&maxDistanz=" + maxDistanz + "&minStart=" + minStart +
+            "&maxStart=" + maxStart + "&maxDauer=" + maxDauer + "&eDauer=" + eDauer + "&maxEnde=" + maxEnde +
+            "&eEnde=" + eEnde + "&maxStrafeAuftrag=" + maxStrafeAuftrag + "&eStrafeAuftrag=" + eStrafeAuftrag +
+            "&maxStrafeTechniker=" + maxStrafeTechniker + "&eStrafeTechniker=" + eStrafeTechniker + "&advanced=" + advancedSwitch,
             true);
         xhttp.send();
 
+    }
+
+    function toggleAdvanced(forceOff) {
+        var advancedPanel = document.querySelector("#panel-advanced");
+        var advancedSwitch = document.querySelector("#switch-advanced");
+        if (!advancedSwitch.checked) {
+            advancedPanel.style.display = "none";
+            resetAdvanced();
+        } else {
+            advancedPanel.style.display = "block";
+        }
     }
 
     function enableFields() {
@@ -211,6 +400,22 @@
     function cancel() {
         xhttp.abort();
         enableFields()
+    }
+
+    function resetAdvanced() {
+        document.querySelector('#seed').value = "";
+        document.querySelector('#minDistanz').value = 0;
+        document.querySelector('#maxDistanz').value = 120;
+        document.querySelector('#minStart').value = 0;
+        document.querySelector('#maxStart').value = 300;
+        document.querySelector('#maxDauer').value = 180;
+        document.querySelector('#eDauer').value = 60;
+        document.querySelector('#maxEnde').value = 120;
+        document.querySelector('#eEnde').value = 60;
+        document.querySelector('#maxStrafeAuftrag').value = 100;
+        document.querySelector('#eStrafeAuftrag').value = 25;
+        document.querySelector('#maxStrafeTechniker').value = 100;
+        document.querySelector('#eStrafeTechniker').value = 25;
     }
 
     function isArray(what) {
@@ -309,7 +514,6 @@
         html += "<div class=\"mdl-grid\"><div class=\"mdl-cell mdl-cell--6-col\">";
         html += "<h5>Auftragsdauer</h5>" + createTable(result.inputs.auftragsdauer);
         html += "</div><div class=\"mdl-cell mdl-cell--6-col\">";
-        html += "<h5>Seed</h5><span>" + result.inputs.seed + "</span>";
         html += "</div></div>";
 
 

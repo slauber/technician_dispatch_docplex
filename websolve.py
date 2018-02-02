@@ -37,21 +37,46 @@ def solve():
 
     :return: response_class
     """
+    problem: routingproblem.RoutingProblem = None
+
     try:
+        print(request.args)
         techniker = int(request.args.get('techniker'))
         auftraege = int(request.args.get('auftraege'))
         skills = int(request.args.get('skills'))
-        seed = int(request.args.get('seed'))
         tageslaenge = int(request.args.get('tageslaenge'))
-        max_tageslaenge = int(request.args.get('max_tageslaenge'))
+        max_tageslaenge = int(request.args.get('maxTageslaenge'))
+
+        # Seed is optional
+        seed = int(request.args.get('seed')) if request.args.get('seed') else None
+        min_distanz = int(request.args.get('minDistanz'))
+        max_distanz = int(request.args.get('maxDistanz'))
+        min_start = int(request.args.get('minStart'))
+        max_start = int(request.args.get('maxStart'))
+        max_dauer = int(request.args.get('maxDauer'))
+        e_dauer = int(request.args.get('eDauer'))
+        max_ende = int(request.args.get('maxEnde'))
+        e_ende = int(request.args.get('eEnde'))
+        max_strafe_auftrag = int(request.args.get('maxStrafeAuftrag'))
+        e_strafe_auftrag = int(request.args.get('eStrafeAuftrag'))
+        max_strafe_techniker = int(request.args.get('maxStrafeTechniker'))
+        e_strafe_techniker = int(request.args.get('eStrafeTechniker'))
+
+        if request.args.get('advanced') == "true":
+            problem = routingproblem.RoutingProblem()
+            problem.daten_generieren(techniker, auftraege, skills, tageslaenge, max_tageslaenge, seed,
+                                     min_distanz, max_distanz, min_start, max_start, max_dauer, e_dauer, max_ende,
+                                     e_ende,
+                                     max_strafe_auftrag, e_strafe_auftrag, max_strafe_techniker, e_strafe_techniker)
+        else:
+            problem = routingproblem.RoutingProblem(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
+                                                    tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge)
     except:
         return app.response_class(
             response="Inputs invalid",
             status=500
         )
 
-    problem = routingproblem.RoutingProblem(anz_techniker=techniker, anz_auftraege=auftraege, anz_skills=skills,
-                                            tageslaenge=tageslaenge, max_tageslaenge=max_tageslaenge, seed=seed)
 
     problem.modell_aus_daten_aufstellen()  # Modell aus generierten Daten herstellen
     problem.solve_model(timeout=29)  # Typischer maximaler HTTP Request Timeout liegt bei 30s
