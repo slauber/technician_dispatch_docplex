@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>websolve &#8212; Technician Dispatch Problem  Dokumentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../genindex.html" />
+    <link rel="search" title="Suche" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Quellcode für websolve</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">send_from_directory</span><span class="p">,</span> <span class="n">redirect</span>
+<span class="kn">from</span> <span class="nn">flask_cors</span> <span class="k">import</span> <span class="n">CORS</span>
+<span class="kn">import</span> <span class="nn">routingproblem</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">static_url_path</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="n">CORS</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="serve_app"><a class="viewcode-back" href="../websolve.html#websolve.serve_app">[Doku]</a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/app/&lt;path:path&gt;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">serve_app</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Statische Dateiausgabe</span>
+
+<span class="sd">    Sendet die gewünschte Datei zurück. Wird zur Ausgabe der Webapp verwendet.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">send_from_directory</span><span class="p">(</span><span class="s1">&#39;html&#39;</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="redirect_user"><a class="viewcode-back" href="../websolve.html#websolve.redirect_user">[Doku]</a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/app&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">redirect_user</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Weiterleitung</span>
+
+<span class="sd">    Leitet den User zur Webapp um.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="s1">&#39;/app/index.html&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="solve"><a class="viewcode-back" href="../websolve.html#websolve.solve">[Doku]</a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/solve&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">solve</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route zur JSON-API des Solvers, erwartet einen parametrisierten GET-Request</span>
+
+<span class="sd">    Berechnet optimale Route für das gegebene Problem</span>
+
+<span class="sd">    Beispiel: http://localhost:5000/solve?techniker=2&amp;auftraege=4&amp;skills=2&amp;seed=1234&amp;tageslaenge=500&amp;max_tageslaenge=600</span>
+
+<span class="sd">    :return: response_class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">problem</span><span class="p">:</span> <span class="n">routingproblem</span><span class="o">.</span><span class="n">RoutingProblem</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replanning_auftrag</span><span class="p">:</span> <span class="n">routingproblem</span><span class="o">.</span><span class="n">Auftrag</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">replanning_zeitpunkt</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+        <span class="n">techniker</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;techniker&#39;</span><span class="p">))</span>
+        <span class="n">auftraege</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;auftraege&#39;</span><span class="p">))</span>
+        <span class="n">skills</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;skills&#39;</span><span class="p">))</span>
+        <span class="n">tageslaenge</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tageslaenge&#39;</span><span class="p">))</span>
+        <span class="n">max_tageslaenge</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxTageslaenge&#39;</span><span class="p">))</span>
+
+        <span class="c1"># Seed is optional</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;seed&#39;</span><span class="p">))</span> <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;seed&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">min_distanz</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;minDistanz&#39;</span><span class="p">))</span>
+        <span class="n">max_distanz</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxDistanz&#39;</span><span class="p">))</span>
+        <span class="n">min_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;minStart&#39;</span><span class="p">))</span>
+        <span class="n">max_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxStart&#39;</span><span class="p">))</span>
+        <span class="n">max_dauer</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxDauer&#39;</span><span class="p">))</span>
+        <span class="n">e_dauer</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;eDauer&#39;</span><span class="p">))</span>
+        <span class="n">max_ende</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxEnde&#39;</span><span class="p">))</span>
+        <span class="n">e_ende</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;eEnde&#39;</span><span class="p">))</span>
+        <span class="n">max_strafe_auftrag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxStrafeAuftrag&#39;</span><span class="p">))</span>
+        <span class="n">e_strafe_auftrag</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;eStrafeAuftrag&#39;</span><span class="p">))</span>
+        <span class="n">max_strafe_techniker</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maxStrafeTechniker&#39;</span><span class="p">))</span>
+        <span class="n">e_strafe_techniker</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;eStrafeTechniker&#39;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;advanced&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+            <span class="n">problem</span> <span class="o">=</span> <span class="n">routingproblem</span><span class="o">.</span><span class="n">RoutingProblem</span><span class="p">()</span>
+            <span class="n">problem</span><span class="o">.</span><span class="n">daten_generieren</span><span class="p">(</span><span class="n">techniker</span><span class="p">,</span> <span class="n">auftraege</span><span class="p">,</span> <span class="n">skills</span><span class="p">,</span> <span class="n">tageslaenge</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span>
+                                     <span class="n">min_distanz</span><span class="p">,</span> <span class="n">max_distanz</span><span class="p">,</span> <span class="n">min_start</span><span class="p">,</span> <span class="n">max_start</span><span class="p">,</span> <span class="n">max_dauer</span><span class="p">,</span> <span class="n">e_dauer</span><span class="p">,</span> <span class="n">max_ende</span><span class="p">,</span>
+                                     <span class="n">e_ende</span><span class="p">,</span>
+                                     <span class="n">max_strafe_auftrag</span><span class="p">,</span> <span class="n">e_strafe_auftrag</span><span class="p">,</span> <span class="n">max_strafe_techniker</span><span class="p">,</span> <span class="n">e_strafe_techniker</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;replanning&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+                <span class="n">replanning_zeitpunkt</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reZeitpunkt&#39;</span><span class="p">))</span>
+                <span class="n">re_fruester_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reFruesterStart&#39;</span><span class="p">))</span>
+                <span class="n">re_spaetestes_ende</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reSpaetestesEnde&#39;</span><span class="p">))</span>
+                <span class="n">re_dauer</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reDauer&#39;</span><span class="p">))</span>
+                <span class="n">re_strafe</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reStrafe&#39;</span><span class="p">))</span>
+                <span class="n">re_skills</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reSkills&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+                <span class="n">replanning_auftrag</span> <span class="o">=</span> <span class="n">routingproblem</span><span class="o">.</span><span class="n">Auftrag</span><span class="p">(</span><span class="n">re_fruester_start</span><span class="p">,</span> <span class="n">re_dauer</span><span class="p">,</span> <span class="n">re_spaetestes_ende</span><span class="p">,</span> <span class="n">re_strafe</span><span class="p">,</span>
+                                                            <span class="n">re_skills</span><span class="p">)</span>
+
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">problem</span> <span class="o">=</span> <span class="n">routingproblem</span><span class="o">.</span><span class="n">RoutingProblem</span><span class="p">(</span><span class="n">anz_techniker</span><span class="o">=</span><span class="n">techniker</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="o">=</span><span class="n">auftraege</span><span class="p">,</span> <span class="n">anz_skills</span><span class="o">=</span><span class="n">skills</span><span class="p">,</span>
+                                                    <span class="n">tageslaenge</span><span class="o">=</span><span class="n">tageslaenge</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="o">=</span><span class="n">max_tageslaenge</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">response_class</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">=</span><span class="s2">&quot;Inputs invalid&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">500</span>
+        <span class="p">)</span>
+
+    <span class="n">problem</span><span class="o">.</span><span class="n">modell_aus_daten_aufstellen</span><span class="p">()</span>  <span class="c1"># Modell aus generierten Daten herstellen</span>
+
+    <span class="k">if</span> <span class="n">replanning_auftrag</span><span class="p">:</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>  <span class="c1"># Typischer maximaler HTTP Request Timeout liegt bei 30s</span>
+
+        <span class="n">erstes_ergebnis</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">json_ausgabe</span><span class="p">()</span>
+
+        <span class="n">problem</span><span class="o">.</span><span class="n">modell_aus_daten_aufstellen</span><span class="p">(</span><span class="n">replanning_daten</span><span class="o">=</span><span class="n">problem</span><span class="o">.</span><span class="n">parameter_zum_zeitpunkt</span><span class="p">(</span><span class="n">replanning_zeitpunkt</span><span class="p">),</span>
+                                            <span class="n">neuer_auftrag</span><span class="o">=</span><span class="n">replanning_auftrag</span><span class="p">)</span>
+
+        <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">response_class</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">=</span><span class="n">problem</span><span class="o">.</span><span class="n">json_ausgabe</span><span class="p">(),</span>
+            <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+            <span class="n">mimetype</span><span class="o">=</span><span class="s1">&#39;application/json&#39;</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">29</span><span class="p">)</span>  <span class="c1"># Typischer maximaler HTTP Request Timeout liegt bei 30s</span>
+        <span class="n">json</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">json_ausgabe</span><span class="p">()</span>  <span class="c1"># JSON Daten für den Webclient und Debugdaten in der Konsole</span>
+        <span class="k">if</span> <span class="n">json</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">response_class</span><span class="p">(</span>
+                <span class="n">response</span><span class="o">=</span><span class="n">json</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+                <span class="n">mimetype</span><span class="o">=</span><span class="s1">&#39;application/json&#39;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">response_class</span><span class="p">(</span>
+                <span class="n">status</span><span class="o">=</span><span class="mi">500</span>
+            <span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Schnellsuche</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Los" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Sebastian Lauber and Yusuf Günes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.7</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

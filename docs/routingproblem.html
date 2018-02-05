@@ -1,0 +1,235 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>routingproblem.py &#8212; Technician Dispatch Problem  Dokumentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="genindex.html" />
+    <link rel="search" title="Suche" href="search.html" />
+    <link rel="next" title="websolve.py" href="websolve.html" />
+    <link rel="prev" title="Technician Dispatch Problem" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-routingproblem">
+<span id="routingproblem-py"></span><h1>routingproblem.py<a class="headerlink" href="#module-routingproblem" title="Link zu dieser Überschrift">¶</a></h1>
+<div class="section" id="routingproblem">
+<h2>RoutingProblem<a class="headerlink" href="#routingproblem" title="Link zu dieser Überschrift">¶</a></h2>
+<dl class="class">
+<dt id="routingproblem.RoutingProblem">
+<em class="property">class </em><code class="descclassname">routingproblem.</code><code class="descname">RoutingProblem</code><span class="sig-paren">(</span><em>anz_techniker: int = None</em>, <em>anz_auftraege: int = None</em>, <em>anz_skills: int = None</em>, <em>tageslaenge: int = None</em>, <em>max_tageslaenge: int = None</em>, <em>seed: int = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Diese Klasse umfasst den gesamten Simulator des Technician Dispatch Problems</p>
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.daten_generieren">
+<code class="descname">daten_generieren</code><span class="sig-paren">(</span><em>anz_techniker: int</em>, <em>anz_auftraege: int</em>, <em>anz_skills: int</em>, <em>tageslaenge: int</em>, <em>max_tageslaenge: int</em>, <em>seed: int = None</em>, <em>min_distanz: int = 0</em>, <em>max_distanz: int = 150</em>, <em>min_start: int = 0</em>, <em>max_start: int = 300</em>, <em>max_dauer: int = 180</em>, <em>e_dauer=60</em>, <em>max_ende: int = 120</em>, <em>e_ende: int = 60</em>, <em>max_strafe_auftrag: int = 100</em>, <em>e_strafe_auftrag: int = 25</em>, <em>max_strafe_techniker: int = 100</em>, <em>e_strafe_techniker: int = 25</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.daten_generieren"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.daten_generieren" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Initialisiert die Ausgangsdaten, die später zur Modellgenerierung herangezogen werden.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameter:</th><td class="field-body"><ul class="first last simple">
+<li><strong>anz_techniker</strong> – int (Anzahl Techniker)</li>
+<li><strong>anz_auftraege</strong> – int (Anzahl Aufträge)</li>
+<li><strong>anz_skills</strong> – int (Länge der gewünschten Skillarrays)</li>
+<li><strong>tageslaenge</strong> – int (nach dieser Länge wird für jeden Techniker pro Minute seine Strafkosten veranschlagt)</li>
+<li><strong>max_tageslaenge</strong> – int (wird niemals überschritten, zu dieser Zeit muss jeder Techniker in seinem Depot sein)</li>
+<li><strong>seed</strong> – int (Initialisierung für PRNG)</li>
+<li><strong>min_distanz</strong> – int (minimale Distanz für die Distanzmatrix in Minuten)</li>
+<li><strong>max_distanz</strong> – int (maximale Distanz für die Distanzmatrix in Minuten)</li>
+<li><strong>min_start</strong> – int (minimaler frühster Startzeitpunkt für Aufträge)</li>
+<li><strong>max_start</strong> – int (maximaler frühster Startzeitpunkt für Aufträge)</li>
+<li><strong>max_dauer</strong> – int (maximale Dauer eines Auftrags (binomialverteilt))</li>
+<li><strong>e_dauer</strong> – int (Erwartungswert der Dauer eines Auftrags (binomialverteilt))</li>
+<li><strong>max_ende</strong> – int (maximale Pufferzeit im Wartungsfenster des Auftrags (binomialverteilt))</li>
+<li><strong>e_ende</strong> – int (Erwartungswert der Pufferzeit im Wartungsfenster des Auftrags (binomialverteilt))</li>
+<li><strong>max_strafe_auftrag</strong> – int (maximale Strafe pro Minute außerhalb des Wartungsfensters des Auftrags (binomialverteilt))</li>
+<li><strong>e_strafe_auftrag</strong> – int (Erwartungswert der Strafe pro Minute außerhalb des Wartungsfensters des Auftrags (binomialverteilt))</li>
+<li><strong>max_strafe_techniker</strong> – int (maximale Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))</li>
+<li><strong>e_strafe_techniker</strong> – int (Erwartungswert der  Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.json_ausgabe">
+<code class="descname">json_ausgabe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.json_ausgabe"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.json_ausgabe" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Formatiert die Daten in JSON</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Rückgabe:</th><td class="field-body">str (enthält in JSON kodierte Daten, die vom Webserver ausgeliefert werden)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.modell_aus_daten_aufstellen">
+<code class="descname">modell_aus_daten_aufstellen</code><span class="sig-paren">(</span><em>replanning_daten=None</em>, <em>neuer_auftrag: routingproblem.Auftrag = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.modell_aus_daten_aufstellen"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.modell_aus_daten_aufstellen" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Stellt das Linearprogramm aus den vorinitialisierten Daten auf</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameter:</th><td class="field-body"><ul class="first last simple">
+<li><strong>replanning_daten</strong> – </li>
+<li><strong>neuer_auftrag</strong> – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.parameter_zum_zeitpunkt">
+<code class="descname">parameter_zum_zeitpunkt</code><span class="sig-paren">(</span><em>t: int</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.parameter_zum_zeitpunkt"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.parameter_zum_zeitpunkt" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Ermittle den Zustand zum Zeitpunkt t, um ihn für das Replanning verwenden zu können.
+Sofern eine Fahrt bereits angetreten wurde, wird diese auch nicht mehr geändert.</p>
+<p>Beispiel: Ein Auftrag (Dauer 15) wurde um 70 begonnen. Die Eingabe dieser Funktion sei t=96, der Techniker ist
+dementsprechend schon zu seinem nächsten Auftrag unterwegs. Dieser Auftrag wird als gesetzt betrachtet und ist
+somit als erledigt gekennzeichnet, obwohl er beispielsweise erst um 130 beginnt.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameter:</th><td class="field-body"><strong>t</strong> – int (gewünschter Zeitpunkt, zu dem die Daten ermittelt werden sollen)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rückgabe:</th><td class="field-body">Replanning_Daten (enthält die Liste aller Fahrten und Startzeiten, die bereits erledigt wurden</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.print_solution">
+<code class="descname">print_solution</code><span class="sig-paren">(</span><em>print_stats=False</em>, <em>print_details=False</em>, <em>print_lp=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.print_solution"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.print_solution" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Gibt die Lösung auf der command line aus
+:param print_stats: bool (gibt erweiterte Informationen des Solvers aus)
+:param print_details: bool (gibt alle Lösungswerte und das Linearprogramm aus)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="routingproblem.RoutingProblem.solve_model">
+<code class="descname">solve_model</code><span class="sig-paren">(</span><em>timeout: int = 120</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.solve_model"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.solve_model" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Startet den Solver</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameter:</th><td class="field-body"><strong>timeout</strong> – int (timeout in s, nach dem die Optimierung abgebrochen wird)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="auftrag">
+<h2>Auftrag<a class="headerlink" href="#auftrag" title="Link zu dieser Überschrift">¶</a></h2>
+<dl class="class">
+<dt id="routingproblem.Auftrag">
+<em class="property">class </em><code class="descclassname">routingproblem.</code><code class="descname">Auftrag</code><span class="sig-paren">(</span><em>fruehste_start_zeit</em>, <em>dauer</em>, <em>spaeteste_end_zeit</em>, <em>strafe</em>, <em>skills</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#Auftrag"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.Auftrag" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Diese Klasse ist für zusätzliche Aufträge, die beim Replanning zum Tragen kommen, bestimmt.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="jsonantwort">
+<h2>JsonAntwort<a class="headerlink" href="#jsonantwort" title="Link zu dieser Überschrift">¶</a></h2>
+<dl class="class">
+<dt id="routingproblem.JsonAntwort">
+<em class="property">class </em><code class="descclassname">routingproblem.</code><code class="descname">JsonAntwort</code><span class="sig-paren">(</span><em>distanzmatrix</em>, <em>fruester_start</em>, <em>auftragsdauer</em>, <em>spaetestes_ende</em>, <em>auftrag_skills</em>, <em>strafe_auftrag</em>, <em>strafe_techniker</em>, <em>techniker_skills</em>, <em>seed</em>, <em>alle_auftraege_erledigt</em>, <em>fahrten_pro_techniker_sortiert</em>, <em>startzeiten</em>, <em>unerledigte_auftraege</em>, <em>solution</em>, <em>solved</em>, <em>replanned=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#JsonAntwort"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.JsonAntwort" title="Link zu dieser Definition">¶</a></dt>
+<dd><p>Hilfsklasse für die JSON Ausgabe</p>
+</dd></dl>
+
+</div>
+<div class="section" id="replanningdaten">
+<h2>ReplanningDaten<a class="headerlink" href="#replanningdaten" title="Link zu dieser Überschrift">¶</a></h2>
+<dl class="class">
+<dt id="routingproblem.ReplanningDaten">
+<em class="property">class </em><code class="descclassname">routingproblem.</code><code class="descname">ReplanningDaten</code><span class="sig-paren">(</span><em>start_zeit</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#ReplanningDaten"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.ReplanningDaten" title="Link zu dieser Definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="vorheriges Kapitel">Technician Dispatch Problem</a></li>
+      <li>Next: <a href="websolve.html" title="nächstes Kapitel">websolve.py</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Schnellsuche</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Los" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Sebastian Lauber and Yusuf Günes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.7</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/routingproblem.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

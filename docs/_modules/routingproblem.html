@@ -1,0 +1,825 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>routingproblem &#8212; Technician Dispatch Problem  Dokumentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../genindex.html" />
+    <link rel="search" title="Suche" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Quellcode für routingproblem</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.model</span> <span class="k">import</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">docplex.mp.solution</span> <span class="k">import</span> <span class="n">SolveSolution</span>
+
+
+<div class="viewcode-block" id="Auftrag"><a class="viewcode-back" href="../routingproblem.html#routingproblem.Auftrag">[Doku]</a><span class="k">class</span> <span class="nc">Auftrag</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Diese Klasse ist für zusätzliche Aufträge, die beim Replanning zum Tragen kommen, bestimmt.&quot;&quot;&quot;</span>
+    <span class="n">fruheste_start_zeit</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">dauer</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">spaeteste_end_zeit</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">strafe</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">skills</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fruehste_start_zeit</span><span class="p">,</span> <span class="n">dauer</span><span class="p">,</span> <span class="n">spaeteste_end_zeit</span><span class="p">,</span> <span class="n">strafe</span><span class="p">,</span> <span class="n">skills</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param fruehste_start_zeit: int (muss so gewählt sein, dass fruehste_start_zeit + dauer + spaeteste_end_zeit &lt; h_max)</span>
+<span class="sd">        :param dauer: int (Dauer des Auftrags)</span>
+<span class="sd">        :param spaeteste_end_zeit: int (muss so gewählt sein, dass fruehste_start_zeit + dauer + spaeteste_end_zeit &lt; h_max)</span>
+<span class="sd">        :param strafe: int (Strafe pro Minute über der spätesten Endzeit)</span>
+<span class="sd">        :param skills: np.array (Länge muss mindestens ANZ_SKILLS des Problems entsprechen)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">fruehste_start_zeit</span> <span class="o">+</span> <span class="n">dauer</span> <span class="o">&gt;</span> <span class="n">spaeteste_end_zeit</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Späteste Endzeit liegt zu früh&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fruehste_start_zeit</span> <span class="o">=</span> <span class="n">fruehste_start_zeit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dauer</span> <span class="o">=</span> <span class="n">dauer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spaeteste_end_zeit</span> <span class="o">=</span> <span class="n">spaeteste_end_zeit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strafe</span> <span class="o">=</span> <span class="n">strafe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skills</span> <span class="o">=</span> <span class="n">skills</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;[Auftrag - Frühste Startzeit </span><span class="si">{}</span><span class="s1">, Dauer </span><span class="si">{}</span><span class="s1">, späteste Endzeit </span><span class="si">{}</span><span class="s1">, Strafe </span><span class="si">{}</span><span class="s1">, Skills </span><span class="si">{}</span><span class="s1">]&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fruehste_start_zeit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dauer</span>
+            <span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">spaeteste_end_zeit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">strafe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">skills</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReplanningDaten"><a class="viewcode-back" href="../routingproblem.html#routingproblem.ReplanningDaten">[Doku]</a><span class="k">class</span> <span class="nc">ReplanningDaten</span><span class="p">:</span>
+    <span class="n">start_zeit</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_zeit</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span> <span class="o">=</span> <span class="n">start_zeit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Startzeiten:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2">Abgeschlossene Fahrten&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="JsonAntwort"><a class="viewcode-back" href="../routingproblem.html#routingproblem.JsonAntwort">[Doku]</a><span class="k">class</span> <span class="nc">JsonAntwort</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Hilfsklasse für die JSON Ausgabe</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">class</span> <span class="nc">Inputs</span><span class="p">:</span>
+        <span class="n">distanzmatrix</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">fruester_start</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">auftragsdauer</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">spaetestes_ende</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">auftrag_skills</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">strafe_auftrag</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">strafe_techniker</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">techniker_skills</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span>
+        <span class="n">replanned</span><span class="p">:</span> <span class="nb">int</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distanzmatrix</span><span class="p">,</span> <span class="n">fruester_start</span><span class="p">,</span> <span class="n">auftragsdauer</span><span class="p">,</span> <span class="n">spaetestes_ende</span><span class="p">,</span> <span class="n">auftrag_skills</span><span class="p">,</span>
+                     <span class="n">strafe_auftrag</span><span class="p">,</span> <span class="n">strafe_techniker</span><span class="p">,</span> <span class="n">techniker_skills</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">replanned</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">distanzmatrix</span> <span class="o">=</span> <span class="n">distanzmatrix</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fruester_start</span> <span class="o">=</span> <span class="n">fruester_start</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">auftragsdauer</span> <span class="o">=</span> <span class="n">auftragsdauer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spaetestes_ende</span> <span class="o">=</span> <span class="n">spaetestes_ende</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">auftrag_skills</span> <span class="o">=</span> <span class="n">auftrag_skills</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">strafe_auftrag</span> <span class="o">=</span> <span class="n">strafe_auftrag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">strafe_techniker</span> <span class="o">=</span> <span class="n">strafe_techniker</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">techniker_skills</span> <span class="o">=</span> <span class="n">techniker_skills</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">replanned</span> <span class="o">=</span> <span class="n">replanned</span>
+
+    <span class="k">class</span> <span class="nc">Outputs</span><span class="p">:</span>
+        <span class="n">alle_auftraege_erledigt</span><span class="p">:</span> <span class="nb">bool</span>
+        <span class="n">fahrten_pro_techniker_sortiert</span><span class="p">:</span> <span class="nb">dict</span>
+        <span class="n">startzeiten</span><span class="p">:</span> <span class="nb">dict</span>
+        <span class="n">unerledigte_auftraege</span><span class="p">:</span> <span class="nb">list</span>
+        <span class="n">solution</span><span class="p">:</span> <span class="nb">str</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alle_auftraege_erledigt</span><span class="p">,</span> <span class="n">fahrten_pro_techniker_sortiert</span><span class="p">,</span> <span class="n">startzeiten</span><span class="p">,</span> <span class="n">unerledigte_auftraege</span><span class="p">,</span>
+                     <span class="n">solution</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span> <span class="o">=</span> <span class="n">alle_auftraege_erledigt</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span> <span class="o">=</span> <span class="n">fahrten_pro_techniker_sortiert</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">startzeiten</span> <span class="o">=</span> <span class="n">startzeiten</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span> <span class="o">=</span> <span class="n">unerledigte_auftraege</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="n">solution</span>
+
+    <span class="n">solved</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">inputs</span><span class="p">:</span> <span class="n">Inputs</span>
+    <span class="n">outputs</span><span class="p">:</span> <span class="n">Outputs</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distanzmatrix</span><span class="p">,</span> <span class="n">fruester_start</span><span class="p">,</span> <span class="n">auftragsdauer</span><span class="p">,</span> <span class="n">spaetestes_ende</span><span class="p">,</span> <span class="n">auftrag_skills</span><span class="p">,</span> <span class="n">strafe_auftrag</span><span class="p">,</span>
+                 <span class="n">strafe_techniker</span><span class="p">,</span> <span class="n">techniker_skills</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span>
+                 <span class="n">alle_auftraege_erledigt</span><span class="p">,</span> <span class="n">fahrten_pro_techniker_sortiert</span><span class="p">,</span> <span class="n">startzeiten</span><span class="p">,</span> <span class="n">unerledigte_auftraege</span><span class="p">,</span> <span class="n">solution</span><span class="p">,</span>
+                 <span class="n">solved</span><span class="p">,</span> <span class="n">replanned</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solved</span> <span class="o">=</span> <span class="n">solved</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Inputs</span><span class="p">(</span><span class="n">distanzmatrix</span><span class="p">,</span> <span class="n">fruester_start</span><span class="p">,</span> <span class="n">auftragsdauer</span><span class="p">,</span> <span class="n">spaetestes_ende</span><span class="p">,</span> <span class="n">auftrag_skills</span><span class="p">,</span>
+                                  <span class="n">strafe_auftrag</span><span class="p">,</span> <span class="n">strafe_techniker</span><span class="p">,</span> <span class="n">techniker_skills</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">replanned</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Outputs</span><span class="p">(</span><span class="n">alle_auftraege_erledigt</span><span class="p">,</span> <span class="n">fahrten_pro_techniker_sortiert</span><span class="p">,</span> <span class="n">startzeiten</span><span class="p">,</span>
+                                    <span class="n">unerledigte_auftraege</span><span class="p">,</span> <span class="n">solution</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_json</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;solved&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">solved</span><span class="p">,</span> <span class="s1">&#39;inputs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="s1">&#39;outputs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="RoutingProblem"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem">[Doku]</a><span class="k">class</span> <span class="nc">RoutingProblem</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Diese Klasse umfasst den gesamten Simulator des Technician Dispatch Problems&quot;&quot;&quot;</span>
+    <span class="n">DISTANZMATRIX</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">TECHNIKER_HAT_SKILL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="n">AUFTRAGSDAUER</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">FRUESTER_START</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">SPAETESTES_ENDE</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="n">H</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">H_max</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="n">STRAFE_AUFTRAG</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">STRAFE_TECHNIKER</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="n">KRAFTSTOFF_KOSTEN</span> <span class="o">=</span> <span class="mf">0.15</span>
+
+    <span class="n">GEWICHT_STRAFE_AUFTRAG</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">GEWICHT_STRAFE_TECHNIKER</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">GEWICHT_TRANSPORT_KOSTEN</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">ANZ_TECHNIKER</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ANZ_AUFTRAEGE</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ANZ_WEGPUNKTE</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ANZ_SKILLS</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="n">SEED</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">REPLANNED</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">mdl</span><span class="p">:</span> <span class="n">Model</span>
+    <span class="n">solution</span><span class="p">:</span> <span class="n">SolveSolution</span>
+
+    <span class="n">x</span><span class="p">:</span> <span class="p">{}</span>
+    <span class="n">start_zeit</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">alle_auftraege_erledigt</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">fahrten_pro_techniker_sortiert</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">startzeiten</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">unerledigte_auftraege</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anz_techniker</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">tageslaenge</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param anz_techniker: int (Anzahl Techniker)</span>
+<span class="sd">        :param anz_auftraege: int (Anzahl Aufträge)</span>
+<span class="sd">        :param anz_skills: int (Länge der gewünschten Skillarrays)</span>
+<span class="sd">        :param tageslaenge: int (nach dieser Länge wird für jeden Techniker pro Minute seine Strafkosten veranschlagt)</span>
+<span class="sd">        :param max_tageslaenge: int (wird niemals überschritten, zu dieser Zeit muss jeder Techniker in seinem Depot sein)</span>
+<span class="sd">        :param seed: int (Initialisierung für PRNG)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startzeiten</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">anz_techniker</span> <span class="ow">and</span> <span class="n">anz_auftraege</span> <span class="ow">and</span> <span class="n">anz_skills</span> <span class="ow">and</span> <span class="n">tageslaenge</span> <span class="ow">and</span> <span class="n">max_tageslaenge</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daten_generieren</span><span class="p">(</span><span class="n">anz_techniker</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">,</span> <span class="n">tageslaenge</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;ANZ_WEGPUNKTE&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;&quot;[RoutingProblem</span>
+
+<span class="s2">[Modell]</span>
+<span class="s2">Distanzmatrix:</span><span class="se">\n</span><span class="si">{}</span><span class="se">\n</span><span class="s2"></span>
+<span class="s2">Frühste Startzeit: </span><span class="se">\t</span><span class="si">{}</span><span class="s2"></span>
+<span class="s2">Auftragsdauer: </span><span class="se">\t\t</span><span class="si">{}</span><span class="s2"></span>
+<span class="s2">Späteste Endzeit: </span><span class="se">\t</span><span class="si">{}</span><span class="s2"></span>
+<span class="s2">Technikerskills:</span>
+<span class="si">{}</span><span class="s2"></span>
+<span class="s2">Auftragskills:</span>
+<span class="si">{}</span><span class="s2"></span>
+<span class="s2">Seed: </span><span class="si">{}</span><span class="s2"></span>
+
+<span class="s2">]</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span><span class="p">,</span>
+                   <span class="bp">self</span><span class="o">.</span><span class="n">TECHNIKER_HAT_SKILL</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SEED</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;[RoutingProblem</span><span class="se">\n\n</span><span class="s1">[Modell]</span><span class="se">\n</span><span class="s1">Nicht vorhanden</span><span class="se">\n\n</span><span class="s1">]&#39;</span>
+
+
+<div class="viewcode-block" id="RoutingProblem.daten_generieren"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.daten_generieren">[Doku]</a>    <span class="k">def</span> <span class="nf">daten_generieren</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anz_techniker</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                         <span class="n">tageslaenge</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">min_distanz</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+                         <span class="n">max_distanz</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">150</span><span class="p">,</span>
+                         <span class="n">min_start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">max_start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span> <span class="n">max_dauer</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">180</span><span class="p">,</span> <span class="n">e_dauer</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+                         <span class="n">max_ende</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">,</span>
+                         <span class="n">e_ende</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">max_strafe_auftrag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">e_strafe_auftrag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+                         <span class="n">max_strafe_techniker</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                         <span class="n">e_strafe_techniker</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialisiert die Ausgangsdaten, die später zur Modellgenerierung herangezogen werden.</span>
+
+<span class="sd">        :param anz_techniker: int (Anzahl Techniker)</span>
+<span class="sd">        :param anz_auftraege: int (Anzahl Aufträge)</span>
+<span class="sd">        :param anz_skills: int (Länge der gewünschten Skillarrays)</span>
+<span class="sd">        :param tageslaenge: int (nach dieser Länge wird für jeden Techniker pro Minute seine Strafkosten veranschlagt)</span>
+<span class="sd">        :param max_tageslaenge: int (wird niemals überschritten, zu dieser Zeit muss jeder Techniker in seinem Depot sein)</span>
+<span class="sd">        :param seed: int (Initialisierung für PRNG)</span>
+<span class="sd">        :param min_distanz: int (minimale Distanz für die Distanzmatrix in Minuten)</span>
+<span class="sd">        :param max_distanz: int (maximale Distanz für die Distanzmatrix in Minuten)</span>
+<span class="sd">        :param min_start: int (minimaler frühster Startzeitpunkt für Aufträge)</span>
+<span class="sd">        :param max_start: int (maximaler frühster Startzeitpunkt für Aufträge)</span>
+<span class="sd">        :param max_dauer: int (maximale Dauer eines Auftrags (binomialverteilt))</span>
+<span class="sd">        :param e_dauer: int (Erwartungswert der Dauer eines Auftrags (binomialverteilt))</span>
+<span class="sd">        :param max_ende: int (maximale Pufferzeit im Wartungsfenster des Auftrags (binomialverteilt))</span>
+<span class="sd">        :param e_ende: int (Erwartungswert der Pufferzeit im Wartungsfenster des Auftrags (binomialverteilt))</span>
+<span class="sd">        :param max_strafe_auftrag: int (maximale Strafe pro Minute außerhalb des Wartungsfensters des Auftrags (binomialverteilt))</span>
+<span class="sd">        :param e_strafe_auftrag: int (Erwartungswert der Strafe pro Minute außerhalb des Wartungsfensters des Auftrags (binomialverteilt))</span>
+<span class="sd">        :param max_strafe_techniker: int (maximale Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))</span>
+<span class="sd">        :param e_strafe_techniker:  int (Erwartungswert der  Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">anz_wegpunkte</span> <span class="o">=</span> <span class="n">anz_techniker</span> <span class="o">+</span> <span class="n">anz_auftraege</span>
+
+        <span class="c1"># Wenn kein Seed gegeben ist, ziehe einen und speichere ihn</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">seed</span><span class="p">:</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">32</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">SEED</span> <span class="o">=</span> <span class="n">seed</span>
+
+        <span class="c1"># Gib eine symmetrische Distanzmatrix mit gegebenen Parametern aus</span>
+        <span class="n">distanzmatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">min_distanz</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_distanz</span> <span class="o">/</span> <span class="mi">2</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">anz_wegpunkte</span><span class="p">,</span> <span class="n">anz_wegpunkte</span><span class="p">))</span>
+        <span class="n">distanzmatrix</span> <span class="o">=</span> <span class="p">(</span><span class="n">distanzmatrix</span> <span class="o">+</span> <span class="n">distanzmatrix</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">distanzmatrix</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span> <span class="o">=</span> <span class="n">distanzmatrix</span>
+
+        <span class="c1"># Setze Tageslänge</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">=</span> <span class="n">tageslaenge</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_max</span> <span class="o">=</span> <span class="n">max_tageslaenge</span>
+
+        <span class="c1"># Generiere Skillsets, binomialverteilt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">TECHNIKER_HAT_SKILL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">3</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">anz_techniker</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">anz_auftraege</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">))</span>
+
+        <span class="c1"># Generiere frühste Auftragsstartzeiten, gleichverteilt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">min_start</span><span class="p">,</span> <span class="n">max_start</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">anz_auftraege</span><span class="p">)</span>
+
+        <span class="c1"># Generiere Auftragsdauern, binomialverteilt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">max_dauer</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="n">e_dauer</span> <span class="o">/</span> <span class="n">max_dauer</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">anz_wegpunkte</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">anz_techniker</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">anz_auftraege</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Generiere Pufferzeit im Wartungsfenster der Aufträge, binomialverteilt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">anz_auftraege</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">anz_auftraege</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">max_ende</span><span class="p">,</span>
+                                                                                                  <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="n">e_ende</span> <span class="o">/</span> <span class="n">max_ende</span><span class="p">))</span>
+        <span class="c1"># Generiere Strafzahlungen, binomialverteilt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">max_strafe_auftrag</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="n">e_strafe_auftrag</span> <span class="o">/</span> <span class="n">max_strafe_auftrag</span><span class="p">),</span>
+                                                 <span class="n">size</span><span class="o">=</span><span class="n">anz_auftraege</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_TECHNIKER</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">max_strafe_techniker</span><span class="p">,</span>
+                                                   <span class="n">p</span><span class="o">=</span><span class="p">(</span><span class="n">e_strafe_techniker</span> <span class="o">/</span> <span class="n">max_strafe_techniker</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">anz_techniker</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">=</span> <span class="n">anz_auftraege</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_SKILLS</span> <span class="o">=</span> <span class="n">anz_skills</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_TECHNIKER</span> <span class="o">=</span> <span class="n">anz_techniker</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span> <span class="o">=</span> <span class="n">anz_wegpunkte</span>
+
+        <span class="c1"># Überprüfe, ob die Techniker die Aufträge mit ihren Skillsets ausführen können</span>
+        <span class="n">skill_check</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">techniker</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">TECHNIKER_HAT_SKILL</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">auftrag</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="p">):</span>
+                <span class="n">skill_check</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">skill_check</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">techniker</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">auftrag</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">skill_check</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warnung - Skillset-Daten sind inkonsistent, es wird ein neuer Seed (</span><span class="si">{}</span><span class="s2">) verwendet&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">seed</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daten_generieren</span><span class="p">(</span><span class="n">anz_techniker</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="p">,</span> <span class="n">anz_skills</span><span class="p">,</span> <span class="n">tageslaenge</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="p">,</span> <span class="n">seed</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RoutingProblem.modell_aus_daten_aufstellen"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.modell_aus_daten_aufstellen">[Doku]</a>    <span class="k">def</span> <span class="nf">modell_aus_daten_aufstellen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">replanning_daten</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">neuer_auftrag</span><span class="p">:</span> <span class="n">Auftrag</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Stellt das Linearprogramm aus den vorinitialisierten Daten auf</span>
+
+<span class="sd">        :param replanning_daten:</span>
+<span class="sd">        :param neuer_auftrag:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mdl</span> <span class="o">=</span> <span class="n">Model</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Technician Dispatch Problem&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Wenn ein neuer Auftrag hinzukommt -&gt; Replanning, dann passe die Arrays und Matrizen an</span>
+        <span class="k">if</span> <span class="n">neuer_auftrag</span><span class="p">:</span>
+            <span class="c1"># Inkrementiere Anzahlen</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Füge Auftrag an letzer Stelle hinzu</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">neuer_auftrag</span><span class="o">.</span><span class="n">skills</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">neuer_auftrag</span><span class="o">.</span><span class="n">strafe</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">neuer_auftrag</span><span class="o">.</span><span class="n">fruehste_start_zeit</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">neuer_auftrag</span><span class="o">.</span><span class="n">dauer</span><span class="p">),</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">neuer_auftrag</span><span class="o">.</span><span class="n">spaeteste_end_zeit</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)))</span>
+
+            <span class="c1"># Generiere neue Distanzen für den neuen Wegpunkt</span>
+            <span class="n">zufallsdistanzen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">)</span>
+            <span class="n">zufallsdistanzen</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                                           <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">zufallsdistanzen</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">zufallsdistanzen</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Abkürzung für loop ranges</span>
+        <span class="n">r_auftraege</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)</span>
+        <span class="n">r_wegpunkte</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">)</span>
+        <span class="n">r_techniker</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_TECHNIKER</span><span class="p">)</span>
+        <span class="n">r_skills</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_SKILLS</span><span class="p">)</span>
+
+        <span class="c1"># Entscheidungsvariablen</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">binary_var_cube</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_TECHNIKER</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Fahrt&quot;</span><span class="p">)</span>
+        <span class="n">start_zeit</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">integer_var_list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Startzeit&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Entscheidungsausdrücke</span>
+        <span class="n">strafkosten_auftrag</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+        <span class="p">)</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">strafkosten_auftrag</span><span class="p">,</span> <span class="s2">&quot;Strafkosten Auftrag&quot;</span><span class="p">)</span>
+
+        <span class="c1">#</span>
+        <span class="n">strafkosten_nicht_gestarteter_auftrag</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">*</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+        <span class="p">)</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">strafkosten_nicht_gestarteter_auftrag</span><span class="p">,</span> <span class="s2">&quot;Strafkosten nicht gestarteter Auftrag&quot;</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="n">strafkosten_techniker</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="p">)</span>
+            <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_TECHNIKER</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+        <span class="p">)</span>
+
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">strafkosten_techniker</span><span class="p">,</span> <span class="s2">&quot;Strafkosten Techniker&quot;</span><span class="p">)</span>
+
+        <span class="n">transportkosten</span> <span class="o">=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">KRAFTSTOFF_KOSTEN</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+        <span class="p">)</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_kpi</span><span class="p">(</span><span class="n">transportkosten</span><span class="p">,</span> <span class="s2">&quot;Transportkosten&quot;</span><span class="p">)</span>
+
+        <span class="n">mdl</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+            <span class="n">strafkosten_auftrag</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">GEWICHT_STRAFE_AUFTRAG</span> <span class="o">+</span> <span class="n">strafkosten_techniker</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">GEWICHT_STRAFE_TECHNIKER</span> <span class="o">+</span>
+            <span class="mi">1000</span> <span class="o">*</span> <span class="n">strafkosten_nicht_gestarteter_auftrag</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Startzeit eines Auftrags muss nach frühestem Startpunkt liegen</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span><span class="p">:</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add_if_then</span><span class="p">(</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span>
+                    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+                <span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Startzeit und Auftragsdauer müssen vor H_max enden</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_max</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span><span class="p">:</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">add_if_then</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">[</span><span class="n">i</span><span class="p">][</span>
+                        <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_max</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Fährt nicht von anderem Wegpunkt zu fremden Depot</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">t</span> <span class="o">!=</span> <span class="n">m</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fährt nicht von anderem Depot zu einem Wegpunkt</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">if</span> <span class="n">m</span> <span class="o">!=</span> <span class="n">i</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fährt maximal einmal von seinem Depot los</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fährt maximal einmal nach Hause</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Beginnt die Route im eigenen Depot</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">&lt;=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">,</span> <span class="n">t</span><span class="p">)]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Endet die Route im eigenen Depot</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">&lt;=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="o">!=</span> <span class="n">i</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fährt maximal einmal von einem Wegpunkt zu einem anderen Wegpunkt</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">if</span> <span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">!=</span> <span class="n">j</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Wenn er von einem Auftrag wegfährt, dann muss er dort auch hingefahren sein</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span> <span class="o">&lt;=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+                <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="n">t</span>
+                <span class="k">if</span> <span class="n">l</span> <span class="o">!=</span> <span class="n">t</span>
+            <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">if</span> <span class="n">l</span> <span class="o">!=</span> <span class="n">j</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Wenn er von einem Auftrag wegfährt, dann muss er dort auch hingefahren sein</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">l</span><span class="p">)]</span> <span class="o">&lt;=</span> <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+                <span class="k">if</span> <span class="n">j</span> <span class="o">!=</span> <span class="n">t</span>
+            <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">if</span> <span class="n">l</span> <span class="o">!=</span> <span class="n">j</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Jeder Auftrag mit positiver Startzeit muss angefahren worden sein</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span><span class="p">:</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add_if_then</span><span class="p">(</span>
+                <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">mdl</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span>
+                        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+                        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+                    <span class="p">]</span>
+                <span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Ein Auftrag besucht sich nicht selbst</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Defaultwert für Technikerstart</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="n">start_zeit</span><span class="p">[</span><span class="n">m</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Zeitconstraints, Startzeiten müssen der Route entsprechen</span>
+        <span class="p">[</span>
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add_if_then</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">start_zeit</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Skill constraint</span>
+        <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">s</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)])</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">TECHNIKER_HAT_SKILL</span><span class="p">[</span><span class="n">m</span><span class="p">][</span><span class="n">s</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">r_auftraege</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">r_wegpunkte</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">r_skills</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Setze vorberechnete Daten als constraint fix</span>
+        <span class="k">if</span> <span class="n">replanning_daten</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">REPLANNED</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+                <span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">replanning_daten</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">replanning_daten</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span>
+            <span class="p">)</span>
+
+            <span class="n">mdl</span><span class="o">.</span><span class="n">add_constraints</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">==</span> <span class="n">replanning_daten</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">m</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">r_techniker</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">replanning_daten</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">m</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">REPLANNED</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span> <span class="o">=</span> <span class="n">start_zeit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span> <span class="o">=</span> <span class="n">mdl</span></div>
+
+<div class="viewcode-block" id="RoutingProblem.solve_model"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.solve_model">[Doku]</a>    <span class="k">def</span> <span class="nf">solve_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Startet den Solver</span>
+
+<span class="sd">        :param timeout: int (timeout in s, nach dem die Optimierung abgebrochen wird)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="o">.</span><span class="n">set_time_limit</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="o">.</span><span class="n">solution</span>
+
+        <span class="c1"># Datenaufbereitung zur einfacheren Verwendung</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">:</span>
+            <span class="n">solution_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span>
+
+            <span class="c1"># Fahrten pro Techniker zugreifbar machen</span>
+            <span class="n">fahrten_pro_techniker</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_TECHNIKER</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="s1">&#39;Fahrt_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="ow">in</span> <span class="n">solution_dict</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">fahrten_pro_techniker</span><span class="p">:</span>
+                                <span class="n">fahrten_pro_techniker</span><span class="p">[</span><span class="n">m</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">))</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">fahrten_pro_techniker</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span>
+
+            <span class="c1"># Fahrten pro Techniker in korrekter Reihenfolge ausgeben</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">techniker</span><span class="p">,</span> <span class="n">fahrten</span> <span class="ow">in</span> <span class="n">fahrten_pro_techniker</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">current_node</span> <span class="o">=</span> <span class="n">techniker</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span><span class="p">[</span><span class="n">techniker</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">current_node</span><span class="p">]</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">next_node</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">while</span> <span class="p">(</span><span class="n">next_node</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">fahrten</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">current_node</span><span class="p">:</span>
+                            <span class="n">next_node</span> <span class="o">=</span> <span class="n">fahrten</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span><span class="p">[</span><span class="n">techniker</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">next_node</span><span class="p">)</span>
+                    <span class="n">current_node</span> <span class="o">=</span> <span class="n">next_node</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">current_node</span> <span class="o">==</span> <span class="n">techniker</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">):</span>
+                        <span class="k">break</span>
+
+            <span class="c1"># Überprüfe, ob alle Fahrten angetreten wurden</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="s2">&quot;Startzeit_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)])</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span>
+                <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span><span class="p">:</span>
+                <span class="n">restauftraege</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">([</span><span class="s2">&quot;Startzeit_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)])</span> <span class="k">if</span>
+                                 <span class="n">item</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())]</span>
+                <span class="k">for</span> <span class="n">auftrag</span> <span class="ow">in</span> <span class="n">restauftraege</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">auftrag</span><span class="p">[</span><span class="mi">10</span><span class="p">:]))</span></div>
+
+<div class="viewcode-block" id="RoutingProblem.print_solution"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.print_solution">[Doku]</a>    <span class="k">def</span> <span class="nf">print_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">print_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">print_details</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">print_lp</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gibt die Lösung auf der command line aus</span>
+<span class="sd">        :param print_stats: bool (gibt erweiterte Informationen des Solvers aus)</span>
+<span class="sd">        :param print_details: bool (gibt alle Lösungswerte und das Linearprogramm aus)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">print_stats</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="o">.</span><span class="n">get_solve_details</span><span class="p">())</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">print_details</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">print_lp</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="o">.</span><span class="n">export_as_lp_string</span><span class="p">())</span>
+
+            <span class="k">for</span> <span class="n">techniker</span><span class="p">,</span> <span class="n">fahrten</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">techniker_str</span> <span class="o">=</span> <span class="s2">&quot;Techniker </span><span class="si">{}</span><span class="s2"> fährt von seinem Depot &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">techniker</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">fahrt</span> <span class="ow">in</span> <span class="n">fahrten</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">fahrt</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span> <span class="o">+</span> <span class="n">techniker</span><span class="p">:</span>
+                        <span class="n">techniker_str</span> <span class="o">=</span> <span class="n">techniker_str</span> <span class="o">+</span> <span class="s2">&quot;zu Auftrag </span><span class="si">{}</span><span class="s2"> (Startzeit: </span><span class="si">{}</span><span class="s2">) &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fahrt</span><span class="p">,</span>
+                                                                                                <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()[</span>
+                                                                                                    <span class="s2">&quot;Startzeit_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                                                                                        <span class="n">fahrt</span><span class="p">)])</span>
+                <span class="n">techniker_str</span> <span class="o">=</span> <span class="n">techniker_str</span> <span class="o">+</span> <span class="s2">&quot;und zurück zu seinem Depot.&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">techniker_str</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Es wurden alle Aufträge in der Periode erledigt&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Es konnten nicht alle Aufträge in der Periode erledigt werden.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Es gibt keine Lösung&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;solved&quot;</span><span class="p">:</span> <span class="kc">False</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="RoutingProblem.json_ausgabe"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.json_ausgabe">[Doku]</a>    <span class="k">def</span> <span class="nf">json_ausgabe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Formatiert die Daten in JSON</span>
+
+<span class="sd">        :return: str (enthält in JSON kodierte Daten, die vom Webserver ausgeliefert werden)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">:</span>
+            <span class="n">start_zeit_geloest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">))</span>
+            <span class="n">startzeiten</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">start_zeit_geloest</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">)}</span>
+
+            <span class="n">json_data</span> <span class="o">=</span> <span class="n">JsonAntwort</span><span class="p">(</span>
+                <span class="n">solved</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">distanzmatrix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">DISTANZMATRIX</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">fruester_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">FRUESTER_START</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">auftragsdauer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">spaetestes_ende</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SPAETESTES_ENDE</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">techniker_skills</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">TECHNIKER_HAT_SKILL</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">auftrag_skills</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAG_BRAUCHT_SKILL</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">strafe_auftrag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_AUFTRAG</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">strafe_techniker</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">STRAFE_TECHNIKER</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SEED</span><span class="p">,</span>
+                <span class="n">alle_auftraege_erledigt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alle_auftraege_erledigt</span><span class="p">,</span>
+                <span class="n">fahrten_pro_techniker_sortiert</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span><span class="p">,</span>
+                <span class="n">startzeiten</span><span class="o">=</span><span class="n">startzeiten</span><span class="p">,</span>
+                <span class="n">unerledigte_auftraege</span><span class="o">=</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unerledigte_auftraege</span><span class="p">),</span>
+                <span class="n">solution</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">),</span>
+                <span class="n">replanned</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">REPLANNED</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">json_data</span><span class="o">.</span><span class="n">get_json</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">json_data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;solved&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">json_data</span><span class="p">);</span></div>
+
+
+<div class="viewcode-block" id="RoutingProblem.parameter_zum_zeitpunkt"><a class="viewcode-back" href="../routingproblem.html#routingproblem.RoutingProblem.parameter_zum_zeitpunkt">[Doku]</a>    <span class="k">def</span> <span class="nf">parameter_zum_zeitpunkt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Ermittle den Zustand zum Zeitpunkt t, um ihn für das Replanning verwenden zu können.</span>
+<span class="sd">        Sofern eine Fahrt bereits angetreten wurde, wird diese auch nicht mehr geändert.</span>
+
+<span class="sd">        Beispiel: Ein Auftrag (Dauer 15) wurde um 70 begonnen. Die Eingabe dieser Funktion sei t=96, der Techniker ist</span>
+<span class="sd">        dementsprechend schon zu seinem nächsten Auftrag unterwegs. Dieser Auftrag wird als gesetzt betrachtet und ist</span>
+<span class="sd">        somit als erledigt gekennzeichnet, obwohl er beispielsweise erst um 130 beginnt.</span>
+
+<span class="sd">        :param t: int (gewünschter Zeitpunkt, zu dem die Daten ermittelt werden sollen)</span>
+<span class="sd">        :return: Replanning_Daten (enthält die Liste aller Fahrten und Startzeiten, die bereits erledigt wurden</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">:</span>
+            <span class="n">done_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_TECHNIKER</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_WEGPUNKTE</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">tatsaechliche_start_zeit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">techniker</span><span class="p">,</span> <span class="n">auftraege</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fahrten_pro_techniker_sortiert</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">letzter_auftrag</span> <span class="o">=</span> <span class="n">techniker</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span>
+                <span class="k">for</span> <span class="n">aktueller_auftrag</span> <span class="ow">in</span> <span class="n">auftraege</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">aktueller_auftrag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">techniker</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ANZ_AUFTRAEGE</span><span class="p">:</span>
+                        <span class="n">abfahrt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">letzter_auftrag</span><span class="p">])</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">AUFTRAGSDAUER</span><span class="p">[</span>
+                            <span class="n">letzter_auftrag</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">abfahrt</span> <span class="o">&lt;</span> <span class="n">t</span><span class="p">:</span>
+                            <span class="n">tatsaechliche_start_zeit</span><span class="p">[</span><span class="n">aktueller_auftrag</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">start_zeit</span><span class="p">[</span><span class="n">aktueller_auftrag</span><span class="p">])</span>
+                            <span class="n">done_matrix</span><span class="p">[</span><span class="n">techniker</span><span class="p">,</span> <span class="n">letzter_auftrag</span><span class="p">,</span> <span class="n">aktueller_auftrag</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">letzter_auftrag</span> <span class="o">=</span> <span class="n">aktueller_auftrag</span>
+            <span class="n">rp_daten</span> <span class="o">=</span> <span class="n">ReplanningDaten</span><span class="p">(</span><span class="n">tatsaechliche_start_zeit</span><span class="p">,</span> <span class="n">done_matrix</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">rp_daten</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;No solution available to analyze&#39;</span><span class="p">)</span></div></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">RoutingProblem</span><span class="p">(</span><span class="n">anz_techniker</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">anz_auftraege</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">anz_skills</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">tageslaenge</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">max_tageslaenge</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+    <span class="n">problem</span><span class="o">.</span><span class="n">modell_aus_daten_aufstellen</span><span class="p">()</span>
+
+    <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">()</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">print_solution</span><span class="p">(</span><span class="n">print_details</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">print_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">replanning_um_200</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">parameter_zum_zeitpunkt</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span>
+    <span class="n">neuer_auftrag_200</span> <span class="o">=</span> <span class="n">Auftrag</span><span class="p">(</span><span class="mi">195</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">270</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Neuer Auftrag: &#39;</span><span class="p">,</span> <span class="n">neuer_auftrag_200</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Replanning erfolgt zur t=200</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">modell_aus_daten_aufstellen</span><span class="p">(</span><span class="n">replanning_daten</span><span class="o">=</span><span class="n">replanning_um_200</span><span class="p">,</span> <span class="n">neuer_auftrag</span><span class="o">=</span><span class="n">neuer_auftrag_200</span><span class="p">)</span>
+
+    <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">()</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">print_solution</span><span class="p">(</span><span class="n">print_details</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">print_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Replanning erfolgt zur t=300</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">replanning_um_300</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">parameter_zum_zeitpunkt</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+    <span class="n">neuer_auftrag_300</span> <span class="o">=</span> <span class="n">Auftrag</span><span class="p">(</span><span class="mi">298</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">390</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">modell_aus_daten_aufstellen</span><span class="p">(</span><span class="n">replanning_um_300</span><span class="p">,</span> <span class="n">neuer_auftrag_300</span><span class="p">)</span>
+
+    <span class="n">problem</span><span class="o">.</span><span class="n">solve_model</span><span class="p">()</span>
+    <span class="n">problem</span><span class="o">.</span><span class="n">print_solution</span><span class="p">(</span><span class="n">print_details</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">print_stats</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Schnellsuche</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Los" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Sebastian Lauber and Yusuf Günes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.7</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

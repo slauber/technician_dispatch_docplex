@@ -38,7 +38,7 @@ class Auftrag:
             , self.spaeteste_end_zeit, self.strafe, self.skills)
 
 
-class Replanning_Daten:
+class ReplanningDaten:
     start_zeit: np.array
     x: np.array
 
@@ -50,7 +50,7 @@ class Replanning_Daten:
         return "Startzeiten:\n{}\nAbgeschlossene Fahrten".format(self.start_zeit, self.x)
 
 
-class Json_Antwort:
+class JsonAntwort:
     """
     Hilfsklasse für die JSON Ausgabe
     """
@@ -227,6 +227,7 @@ Seed: {}
         :param max_strafe_techniker: int (maximale Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))
         :param e_strafe_techniker:  int (Erwartungswert der  Strafe pro Minute außerhalb der Tagesdauer des Technikers (binomialverteilt))
         """
+
         anz_wegpunkte = anz_techniker + anz_auftraege
 
         # Wenn kein Seed gegeben ist, ziehe einen und speichere ihn
@@ -261,9 +262,7 @@ Seed: {}
         self.SPAETESTES_ENDE = np.zeros(anz_auftraege, dtype=int)
         for i in range(anz_auftraege):
             self.SPAETESTES_ENDE[i] = self.FRUESTER_START[i] + self.AUFTRAGSDAUER[i] + np.random.binomial(n=max_ende,
-                                                                                                          p=(
-                                                                                                                      e_ende / max_ende))
-
+                                                                                                  p=(e_ende / max_ende))
         # Generiere Strafzahlungen, binomialverteilt
         self.STRAFE_AUFTRAG = np.random.binomial(n=max_strafe_auftrag, p=(e_strafe_auftrag / max_strafe_auftrag),
                                                  size=anz_auftraege)
@@ -657,7 +656,7 @@ Seed: {}
             start_zeit_geloest = self.solution.get_values(self.start_zeit[i] for i in range(self.ANZ_AUFTRAEGE))
             startzeiten = {i: start_zeit_geloest[i] for i in range(self.ANZ_AUFTRAEGE)}
 
-            json_data = Json_Antwort(
+            json_data = JsonAntwort(
                 solved=True,
                 distanzmatrix=self.DISTANZMATRIX.tolist(),
                 fruester_start=self.FRUESTER_START.tolist(),
@@ -708,7 +707,7 @@ Seed: {}
                                 self.start_zeit[aktueller_auftrag])
                             done_matrix[techniker, letzter_auftrag, aktueller_auftrag] = True
                     letzter_auftrag = aktueller_auftrag
-            rp_daten = Replanning_Daten(tatsaechliche_start_zeit, done_matrix)
+            rp_daten = ReplanningDaten(tatsaechliche_start_zeit, done_matrix)
             return rp_daten
         else:
             raise Exception('No solution available to analyze')

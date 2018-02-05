@@ -1,0 +1,138 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Technician Dispatch Problem &#8212; Technician Dispatch Problem  Dokumentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="genindex.html" />
+    <link rel="search" title="Suche" href="search.html" />
+    <link rel="next" title="routingproblem.py" href="routingproblem.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="technician-dispatch-problem">
+<h1>Technician Dispatch Problem<a class="headerlink" href="#technician-dispatch-problem" title="Link zu dieser Überschrift">¶</a></h1>
+<div class="section" id="technician-dispatch-problem-docplex-mp">
+<h2>Technician Dispatch Problem (DOcplex.MP)<a class="headerlink" href="#technician-dispatch-problem-docplex-mp" title="Link zu dieser Überschrift">¶</a></h2>
+<p>Dieses Programm ist Teil einer Abgabe zu Lösung des Technician Dispatch Problems.
+Es entsteht im Seminar Smart Services and the IoT.</p>
+<img alt="https://raw.githubusercontent.com/slauber/technician_dispatch_docplex/master/docs/tdp.gif" src="https://raw.githubusercontent.com/slauber/technician_dispatch_docplex/master/docs/tdp.gif" />
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Link zu dieser Überschrift">¶</a></h3>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>lokale Installation von <a class="reference external" href="https://www.ibm.com/analytics/data-science/prescriptive-analytics/cplex-optimizer">IBM CPlex</a> &gt;= Version 12.7</dt>
+<dd><ul class="first last">
+<li>cpoptimizer executable muss im PYTHONPATH liegen (insbesondere bei virtualenv überprüfen, <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/cp/creating_model.html#solve-a-model-with-local-solver">DOcplex Doku</a>)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li>Abhängigkeiten aus requirements.txt</li>
+</ul>
+</div>
+<div class="section" id="solver">
+<h3>Solver<a class="headerlink" href="#solver" title="Link zu dieser Überschrift">¶</a></h3>
+<p>Die Implementierung zur Aufstellung und Lösung des Technician Dispatch Problems ist in der <code class="code docutils literal"><span class="pre">routingproblem.py</span></code> zu finden.</p>
+</div>
+<div class="section" id="webapp">
+<h3>Webapp<a class="headerlink" href="#webapp" title="Link zu dieser Überschrift">¶</a></h3>
+<p>Es gibt eine Webapp, die zur bequemen Steuerung des Simulators dient. Die Webapp ist mit <a class="reference external" href="http://flask.pocoo.org">Flask</a> entwickelt und lässt sich mit <code class="code docutils literal"><span class="pre">flask</span> <span class="pre">run</span></code> ausführen, wenn die Umgebungsvariable <code class="code docutils literal"><span class="pre">FLASK_APP=websolve</span></code> gesetzt ist.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="routingproblem.html">routingproblem.py</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="routingproblem.html#routingproblem">RoutingProblem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="routingproblem.html#auftrag">Auftrag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="routingproblem.html#jsonantwort">JsonAntwort</a></li>
+<li class="toctree-l2"><a class="reference internal" href="routingproblem.html#replanningdaten">ReplanningDaten</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="websolve.html">websolve.py</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="verzeichnisse-und-suche">
+<h2>Verzeichnisse und Suche<a class="headerlink" href="#verzeichnisse-und-suche" title="Link zu dieser Überschrift">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Stichwortverzeichnis</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Modulindex</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Suche</span></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="routingproblem.html" title="nächstes Kapitel">routingproblem.py</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Schnellsuche</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Los" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Sebastian Lauber and Yusuf Günes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.7</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

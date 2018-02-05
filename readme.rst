@@ -3,7 +3,7 @@ Technician Dispatch Problem (DOcplex.MP)
 Dieses Programm ist Teil einer Abgabe zu Lösung des Technician Dispatch Problems.
 Es entsteht im Seminar Smart Services and the IoT.
 
-.. image:: https://raw.githubusercontent.com/slauber/technician_dispatch_docplex/master/doc/tdp.gif
+.. image:: https://raw.githubusercontent.com/slauber/technician_dispatch_docplex/master/docs/tdp.gif
 
 Requirements
 ------------

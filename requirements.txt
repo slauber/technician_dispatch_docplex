@@ -1,4 +1,6 @@
+alabaster==0.7.10
 appnope==0.1.0
+Babel==2.5.3
 bleach==2.1.2
 certifi==2017.7.27.1
 chardet==3.0.4
@@ -8,11 +10,13 @@ cycler==0.10.0
 decorator==4.1.2
 docloud==1.0.257
 docplex==2.4.61
+docutils==0.14
 entrypoints==0.2.3
 Flask==0.12.2
 Flask-Cors==3.0.3
 html5lib==1.0.1
 idna==2.6
+imagesize==0.7.1
 ipykernel==4.7.0
 ipython==6.2.1
 ipython-genutils==0.2.0
@@ -43,6 +47,9 @@ qtconsole==4.3.1
 requests==2.18.4
 simplegeneric==0.8.1
 six==1.10.0
+snowballstemmer==1.2.1
+Sphinx==1.6.7
+sphinxcontrib-websupport==1.0.1
 terminado==0.8.1
 testpath==0.3.1
 tornado==4.5.2
