@@ -101,6 +101,22 @@
 <dt id="routingproblem.RoutingProblem.modell_aus_daten_aufstellen">
 <code class="descname">modell_aus_daten_aufstellen</code><span class="sig-paren">(</span><em>replanning_daten=None</em>, <em>neuer_auftrag: routingproblem.Auftrag = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#RoutingProblem.modell_aus_daten_aufstellen"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.RoutingProblem.modell_aus_daten_aufstellen" title="Link zu dieser Definition">¶</a></dt>
 <dd><p>Stellt das Linearprogramm aus den vorinitialisierten Daten auf</p>
+    <dl class="docutils">
+        <dt>Wichtig: Zugriff auf die Aufträge und Depots sind in gemeinsamen Arrays x und DISTANZMATRIX.</dt>
+        <dd><p class="first">Das bedeutet, dass man für den Zugriff auf Depots den Index um ANZ_AUFTRAEGE inkrementieren
+            muss.
+            Beispiel für die Fahrt von Techniker 0 von Auftrag 2 in sein Depot: x[(0, 2, ANZ_AUFTRAGE+0)].</p>
+            <p class="last">Die Indizierung von x ist speziell, der Zugriff muss über ein Python Set aus Indizes
+                bestehen, daher die
+                etwas merkwürdige Syntax x[()]</p>
+        </dd>
+    </dl>
+    <p>Indizes beginnen immer bei 0.</p>
+    <ol class="arabic simple">
+        <li>Das Modell um einen potenziellen Replanning-Auftrag erweitert</li>
+        <li>Die Zielfunktion wird mit 4 KPIs erstellt</li>
+        <li>Die Constraints werden hinzugefügt</li>
+    </ol>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -183,7 +199,9 @@ somit als erledigt gekennzeichnet, obwohl er beispielsweise erst um 130 beginnt.
 <dl class="class">
 <dt id="routingproblem.ReplanningDaten">
 <em class="property">class </em><code class="descclassname">routingproblem.</code><code class="descname">ReplanningDaten</code><span class="sig-paren">(</span><em>start_zeit</em>, <em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/routingproblem.html#ReplanningDaten"><span class="viewcode-link">[Quellcode]</span></a><a class="headerlink" href="#routingproblem.ReplanningDaten" title="Link zu dieser Definition">¶</a></dt>
-<dd></dd></dl>
+    <dd><p>Diese Klasse enthält Daten, die für das Replanning eingesetzt werden</p>
+    </dd>
+</dl>
 
 </div>
 </div>

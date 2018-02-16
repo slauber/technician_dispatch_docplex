@@ -53,12 +53,40 @@ Es entsteht im Seminar Smart Services and the IoT.</p>
 <li><dl class="first docutils">
 <dt>lokale Installation von <a class="reference external" href="https://www.ibm.com/analytics/data-science/prescriptive-analytics/cplex-optimizer">IBM CPlex</a> &gt;= Version 12.7</dt>
 <dd><ul class="first last">
-<li>cpoptimizer executable muss im PYTHONPATH liegen (insbesondere bei virtualenv überprüfen, <a class="reference external" href="http://ibmdecisionoptimization.github.io/docplex-doc/cp/creating_model.html#solve-a-model-with-local-solver">DOcplex Doku</a>)</li>
+    <li>cpoptimizer executable muss im <code class="code docutils literal"><span class="pre">PYTHONPATH</span></code>
+        liegen (insbesondere bei <code class="code docutils literal"><span class="pre">virtualenv</span></code>
+        überprüfen, siehe <a class="reference external"
+                             href="https://ibmdecisionoptimization.github.io/docplex-doc/cp/creating_model.html#solve-a-model-with-local-solver">DOcplex
+            Doku (lokal)</a>)
+    </li>
+    <li>Alternative: Nutzung des Cloud Solvers, siehe <a class="reference external"
+                                                         href="https://ibmdecisionoptimization.github.io/docplex-doc/getting_started.html#using-the-ibm-decision-optimization-on-cloud-service">DOcplex
+        Doku (Cloud)</a></li>
 </ul>
 </dd>
 </dl>
 </li>
-<li>Abhängigkeiten aus requirements.txt</li>
+    <li>Nutzung von <code class="code docutils literal"><span class="pre">virtualenv</span></code> wird empfohlen,
+        verwendete Pythonversion zur Entwicklung: 3.6
+    </li>
+    <li>Abhängigkeiten aus <code class="code docutils literal"><span class="pre">requirements.txt</span></code></li>
+</ul>
+</div>
+    <div class="section" id="installation-nutzung">
+        <h3>Installation &amp; Nutzung<a class="headerlink" href="#installation-nutzung"
+                                         title="Link zu dieser Überschrift">¶</a></h3>
+        <ul class="simple">
+            <li>Abhängigkeiten installieren (siehe oben)</li>
+            <li>ggf. Anpassung des Szenarios in der main-Methode der Anwendung (<code
+                    class="code docutils literal"><span class="pre">routingproblem.py</span></code>) und Start des
+                Solvers (<code class="code docutils literal"><span class="pre">python</span> <span class="pre">routingproblem.py</span></code>)
+            </li>
+            <li>Start des Webservers (Linux und macOS <code class="code docutils literal"><span
+                    class="pre">export</span> <span class="pre">FLASK_APP=websolve.py&amp;&amp;flask</span> <span
+                    class="pre">run</span></code>, Windows siehe <a class="reference external"
+                                                                    href="https://flask.pocoo.org/docs/0.12/cli/">Flask
+                CLI Doku</a>)
+            </li>
 </ul>
 </div>
 <div class="section" id="solver">
@@ -67,7 +95,8 @@ Es entsteht im Seminar Smart Services and the IoT.</p>
 </div>
 <div class="section" id="webapp">
 <h3>Webapp<a class="headerlink" href="#webapp" title="Link zu dieser Überschrift">¶</a></h3>
-<p>Es gibt eine Webapp, die zur bequemen Steuerung des Simulators dient. Die Webapp ist mit <a class="reference external" href="http://flask.pocoo.org">Flask</a> entwickelt und lässt sich mit <code class="code docutils literal"><span class="pre">flask</span> <span class="pre">run</span></code> ausführen, wenn die Umgebungsvariable <code class="code docutils literal"><span class="pre">FLASK_APP=websolve</span></code> gesetzt ist.</p>
+    <p>Es gibt eine Webapp, die zur bequemen Steuerung des Simulators dient. Die Webapp ist mit <a
+            class="reference external" href="http://flask.pocoo.org">Flask</a> entwickelt.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="routingproblem.html">routingproblem.py</a><ul>

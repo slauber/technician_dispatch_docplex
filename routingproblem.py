@@ -8,6 +8,7 @@ from docplex.mp.solution import SolveSolution
 
 class Auftrag:
     """Diese Klasse ist für zusätzliche Aufträge, die beim Replanning zum Tragen kommen, bestimmt."""
+
     fruheste_start_zeit: int
     dauer: int
     spaeteste_end_zeit: int
@@ -39,10 +40,16 @@ class Auftrag:
 
 
 class ReplanningDaten:
+    """Diese Klasse enthält Daten, die für das Replanning eingesetzt werden"""
     start_zeit: np.array
     x: np.array
 
     def __init__(self, start_zeit, x):
+        """Initialisierung mit vorberechneten Startzeiten und Übergängen zum Replanningzeitpunkt
+
+        :param start_zeit: np.array (vorberechnete Startzeiten)
+        :param x: np.array (vorberechnete Übergänge)
+        """
         self.start_zeit = start_zeit
         self.x = x
 
@@ -117,23 +124,24 @@ class RoutingProblem:
     """Diese Klasse umfasst den gesamten Simulator des Technician Dispatch Problems"""
     DISTANZMATRIX: np.array
     TECHNIKER_HAT_SKILL: np.array
-    AUFTRAG_BRAUCHT_SKILL: np.array
 
     AUFTRAGSDAUER: np.array
     FRUESTER_START: np.array
     SPAETESTES_ENDE: np.array
+    AUFTRAG_BRAUCHT_SKILL: np.array
 
-    H: int
-    H_max: int
+    H: int  # Reguläre Arbeitszeit
+    H_max: int  # Maximale Arbeitszeit (harte Grenze)
 
     STRAFE_AUFTRAG: np.array
     STRAFE_TECHNIKER: np.array
 
-    KRAFTSTOFF_KOSTEN = 0.15
+    TRANSPORT_KOSTEN = 0.15  # Betriebskosten pro Zeiteinheit während der Fahrt zwischen zwei Standorten
 
-    GEWICHT_STRAFE_AUFTRAG = 1000
-    GEWICHT_STRAFE_TECHNIKER = 100
-    GEWICHT_TRANSPORT_KOSTEN = 1
+    GEWICHT_STRAFE_AUFTRAG_UNERFUELLT = 10000  # XL
+    GEWICHT_STRAFE_AUFTRAG = 1000  # L
+    GEWICHT_STRAFE_TECHNIKER = 100  # M
+    GEWICHT_TRANSPORT_KOSTEN = 1  # S
 
     ANZ_TECHNIKER: int
     ANZ_AUFTRAEGE: int
@@ -286,6 +294,19 @@ Seed: {}
     def modell_aus_daten_aufstellen(self, replanning_daten=None, neuer_auftrag: Auftrag = None):
         """Stellt das Linearprogramm aus den vorinitialisierten Daten auf
 
+        Wichtig: Zugriff auf die Aufträge und Depots sind in gemeinsamen Arrays x und DISTANZMATRIX.
+            Das bedeutet, dass man für den Zugriff auf Depots den Index um ANZ_AUFTRAEGE inkrementieren muss.
+            Beispiel für die Fahrt von Techniker 0 von Auftrag 2 in sein Depot: x[(0, 2, ANZ_AUFTRAGE+0)].
+
+            Die Indizierung von x ist speziell, der Zugriff muss über ein Python Set aus Indizes bestehen, daher die
+            etwas merkwürdige Syntax x[()]
+
+        Indizes beginnen immer bei 0.
+
+        1. Das Modell um einen potenziellen Replanning-Auftrag erweitert
+        2. Die Zielfunktion wird mit 4 KPIs erstellt
+        3. Die Constraints werden hinzugefügt
+
         :param replanning_daten:
         :param neuer_auftrag:
         """
@@ -324,41 +345,47 @@ Seed: {}
         start_zeit = mdl.integer_var_list(self.ANZ_WEGPUNKTE, name="Startzeit")
 
         # Entscheidungsausdrücke
-        strafkosten_auftrag = mdl.sum(
+        #
+        # Summe der Strafkosten für verspätetet erledigte Aufträge
+        strafkosten_auftrag_verspaetet = mdl.sum(
             mdl.max(0, start_zeit[i] + self.AUFTRAGSDAUER[i] - self.SPAETESTES_ENDE[i]) * self.STRAFE_AUFTRAG[i]
             for i in r_auftraege
         )
-        mdl.add_kpi(strafkosten_auftrag, "Strafkosten Auftrag")
+        mdl.add_kpi(strafkosten_auftrag_verspaetet, "Strafkosten Auftrag verspätet")
 
-        #
-        strafkosten_nicht_gestarteter_auftrag = mdl.sum(
+        # Summe der Strafkosten für unerledigte Aufträge
+        strafkosten_auftrag_unerfuellt = mdl.sum(
             mdl.max((1 - start_zeit[i]) * 10000, 0) * self.STRAFE_AUFTRAG[i]
             for i in r_auftraege
         )
-        mdl.add_kpi(strafkosten_nicht_gestarteter_auftrag, "Strafkosten nicht gestarteter Auftrag")
-        #
+        mdl.add_kpi(strafkosten_auftrag_unerfuellt, "Strafkosten Auftrag unerfüllter")
+
+        # Summe der Strafkosten für verspätetet zurückgekehrte Techniker
         strafkosten_techniker = mdl.sum(
             mdl.max(0, start_zeit[i] + self.AUFTRAGSDAUER[i], self.DISTANZMATRIX[i][m + self.ANZ_AUFTRAEGE] - self.H)
             * self.STRAFE_TECHNIKER[m] * x[(m, i, m + self.ANZ_AUFTRAEGE)]
             for i in r_auftraege
             for m in r_techniker
         )
-
         mdl.add_kpi(strafkosten_techniker, "Strafkosten Techniker")
 
+        # Summe der Transportkosten
         transportkosten = mdl.sum(
-            x[(m, i, j)] * self.DISTANZMATRIX[i][j] * self.KRAFTSTOFF_KOSTEN
+            x[(m, i, j)] * self.DISTANZMATRIX[i][j] * self.TRANSPORT_KOSTEN
             for m in r_techniker
             for i in r_wegpunkte
             for j in r_wegpunkte
         )
         mdl.add_kpi(transportkosten, "Transportkosten")
 
+        # Gewichteter Entscheidungsausdruck
         mdl.minimize(
-            strafkosten_auftrag * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER +
-            1000 * strafkosten_nicht_gestarteter_auftrag
+            strafkosten_auftrag_verspaetet * self.GEWICHT_STRAFE_AUFTRAG + strafkosten_techniker * self.GEWICHT_STRAFE_TECHNIKER +
+            self.GEWICHT_STRAFE_AUFTRAG_UNERFUELLT * strafkosten_auftrag_unerfuellt
         )
 
+        # Constraints
+        #
         # Startzeit eines Auftrags muss nach frühestem Startpunkt liegen
         for i in r_auftraege:
             mdl.add_if_then(
@@ -376,6 +403,7 @@ Seed: {}
             for i in r_auftraege
         )
 
+        # Wenn eine Fahrt von einem Auftrag zu einem Depot stattfindet, dann muss die Ankunftszeit vor H_max liegen
         for i in r_auftraege:
             for m in r_techniker:
                 mdl.add_if_then(
@@ -531,7 +559,7 @@ Seed: {}
             for s in r_skills
         )
 
-        # Setze vorberechnete Daten als constraint fix
+        # Setze vorberechnete Replanning-Daten als constraint fix
         if replanning_daten:
             self.REPLANNED = True
 
@@ -551,6 +579,7 @@ Seed: {}
         else:
             self.REPLANNED = False
 
+        # Speichere Modell
         self.x = x
         self.start_zeit = start_zeit
         self.mdl = mdl
@@ -602,6 +631,7 @@ Seed: {}
             self.alle_auftraege_erledigt = set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]).issubset(
                 set(self.solution.as_dict().keys()))
 
+            # Ermittle unerledigte Aufträge
             self.unerledigte_auftraege = []
             if not self.alle_auftraege_erledigt:
                 restauftraege = [item for item in set(["Startzeit_{}".format(i) for i in range(self.ANZ_AUFTRAEGE)]) if
@@ -678,7 +708,7 @@ Seed: {}
             return json_data.get_json()
         else:
             json_data = {"solved": False}
-            return json.dumps(json_data);
+            return json.dumps(json_data)
 
 
     def parameter_zum_zeitpunkt(self, t: int):
