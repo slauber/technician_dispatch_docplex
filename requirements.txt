@@ -12,7 +12,7 @@ docloud==1.0.257
 docplex==2.4.61
 docutils==0.14
 entrypoints==0.2.3
-Flask==0.12.2
+Flask==1.0
 Flask-Cors==3.0.3
 html5lib==1.0.1
 idna==2.6
